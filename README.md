@@ -17,7 +17,6 @@ npm run test:watch
 ```
 
 # Turborepo starter
-<<<<<<< Updated upstream
 # Protokit starter-kit
 
 This repository is a monorepo aimed at kickstarting application chain development using the Protokit framework.
@@ -71,7 +70,6 @@ pnpm run test --filter=chain -- --watchAll
 ```
 
 Navigate to `localhost:3000` to see the example UI, or to `localhost:8080/graphql` to see the GQL interface of the locally running sequencer.
-=======
 
 This is an official starter Turborepo.
 
@@ -152,4 +150,3 @@ Learn more about the power of Turborepo:
 - [Filtering](https://turbo.build/repo/docs/core-concepts/monorepos/filtering)
 - [Configuration Options](https://turbo.build/repo/docs/reference/configuration)
 - [CLI Usage](https://turbo.build/repo/docs/reference/command-line-reference)
->>>>>>> Stashed changes
