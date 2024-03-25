@@ -8,43 +8,69 @@ import { State, StateMap, assert } from "@proto-kit/protocol";
 import {
     Bool,
     Field,
+    PrivateKey,
     Provable,
     PublicKey,
     Struct,
-    UInt64,
+    Experimental,
+    arrayProp
 } from "o1js";
+import { Controller } from "./Controller";
+import {
+    CalculateScore
+} from './ScoreCalculation';
+import { UInt240 } from "./UInt240";
 
-interface ExamConfig { }
+
+await CalculateScore.compile();
+
+class CalculateProof extends Experimental.ZkProgram.Proof(CalculateScore) {}
+
+interface ExamConfig { 
+    incorrectToCorrectRatio: Field;
+}
+
 
 export class Question extends Struct({
-    questionID: UInt64,
-    correct_answer: UInt64,
+    questionID: Field,
+    questionHash: Field,
+    correct_answer: Field,
 }) {
-    constructor(questionID: UInt64, correct_answer: UInt64) {
-        super({ questionID, correct_answer });
+    constructor(questionID: Field, questionHash: Field, correct_answer: Field) {
+        super({ questionID, questionHash, correct_answer });
         this.questionID = questionID;
         this.correct_answer = correct_answer;
+        this.questionHash = questionHash;
     }
 }
-export class Answer extends Struct({
-    question: Question,
-    answer: UInt64,
+
+export class Questions extends Struct ({
+    array: Provable.Array(Question, 120)
 }) {
-    constructor(question: Question, answer: UInt64) {
+    constructor(array: Question[]) {
+        super({ array });
+        this.array = array;
+    }
+}
+export class UserAnswer extends Struct({
+    question: Question,
+    answer: Field,
+}) {
+    constructor(question: Question, answer: Field) {
         super({ question, answer });
         this.question = question;
         this.answer = answer;
     }
 }
 export class Exam120 extends Struct({
-    questions_count: UInt64,
+    questions_count: Field,
     creator: PublicKey,
     questions: Provable.Array(Question, 120),
     start_time: Field,
     end_time: Field,
 }) {
     constructor(
-        questions_count: UInt64,
+        questions_count: Field,
         creator: PublicKey,
         questions: Question[],
         start_time: Field,
@@ -59,11 +85,11 @@ export class Exam120 extends Struct({
     }
 }
 export class AnswerID extends Struct({
-    examID: UInt64,
-    questionID: UInt64,
-    userID: UInt64
+    examID: Field,
+    questionID: Field,
+    userID: Field
 }) {
-    constructor(examID: UInt64, questionID: UInt64, userID: UInt64) {
+    constructor(examID: Field, questionID: Field, userID: Field) {
         super({ examID, questionID, userID });
         this.examID = examID;
         this.questionID = questionID;
@@ -72,18 +98,56 @@ export class AnswerID extends Struct({
 }
 @runtimeModule()
 export class Examina extends RuntimeModule<ExamConfig> {
-    @state() public exams = StateMap.from<UInt64, Exam120>(UInt64, Exam120);
-    @state() public answers = StateMap.from<AnswerID, Answer>(AnswerID, Answer);
+    @state() public exams = StateMap.from<Field, Exam120>(Field, Exam120);
+    @state() public answers = StateMap.from<AnswerID, UserAnswer>(AnswerID, UserAnswer);
 
     @runtimeMethod()
-    public createExam(examID: UInt64, Exam: Exam120): void {
+    public createExam(examID: Field, Exam: Exam120): void {
         this.exams.set(examID, Exam);
     }
 
     @runtimeMethod()
-    public submitAnswer(answerID: AnswerID, answer: Answer): void {
+    public submitUserAnswer(answerID: AnswerID, answer: UserAnswer): void {
         const start_time = this.exams.get(answerID.examID).value.start_time;
         const end_time = this.exams.get(answerID.examID).value.end_time;
         this.answers.set(answerID, answer);
     }
+
+    @runtimeMethod()
+    public publishExamCorrectAnswers(examID: Field, questions: Questions): void {
+        const exam = this.exams.get(examID).value;
+        exam.questions = questions.array;
+        this.exams.set(examID, exam);
+    }
+
+    public getUserAnswers(examID: Field, userID: Field): Field[] {
+        const exam = this.exams.get(examID).value;
+        let userAnswers: Field[] = [];
+        for (const question of exam.questions) {
+            const answerID = new AnswerID(examID, question.questionID, userID);
+            const answer = this.answers.get(answerID);
+            userAnswers.push(answer.value.answer);
+        }
+        return userAnswers;
+    }
+
+    @runtimeMethod()
+    public checkUserScore(proof: CalculateProof, controller: Controller) {
+        proof.verify();
+        const answers = this.getUserAnswers(controller.examID, controller.userID);
+        const incorrectToCorrectRatio = this.config.incorrectToCorrectRatio;
+
+        const secureHash = controller.secureHash;
+        proof.publicInput.assertEquals(secureHash);
+
+        secureHash.assertEquals(controller.hash());        
+
+        const incorrects = proof.publicOutput.incorrects;
+        const corrects = proof.publicOutput.corrects;
+        const quotient = incorrects.div(UInt240.from(incorrectToCorrectRatio.toBigInt()));
+
+        const score = corrects.sub(quotient);
+
+        return score;
+    } 
 }
