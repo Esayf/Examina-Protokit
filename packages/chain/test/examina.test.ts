@@ -1,29 +1,24 @@
 import { TestingAppChain } from "@proto-kit/sdk";
-import { CircuitString, Field, Poseidon, PrivateKey, PublicKey, UInt64 } from "o1js";
+import { Bool, CircuitString, Field, Poseidon, PrivateKey, PublicKey, UInt64 } from "o1js";
 import { AnswerID, Exam120, Examina, Question, UserAnswer } from "../src/Examina";
 import { log } from "@proto-kit/common";
 import { InMemoryDatabase, LocalTaskWorkerModule, PrivateMempool, SettlementModule } from "@proto-kit/sequencer";
-log.setLevel("DEBUG");
+log.setLevel("ERROR");
 
-describe("Examina", () => {   
-    
+describe("Examina", () => {
+
     let appChain = TestingAppChain.fromRuntime({
         modules: {
             Examina,
         },
     });
     let examina: Examina;
-    let exam: Exam120 | undefined;
     let mockExamID_Buffer: Buffer;
     let mockExamID_1: Field;
-    let mockUserID_Buffer: Buffer;
-    let mockUserID_1: Field;
-    let mockAnswer: UserAnswer;
     let mockQuestions: Question[];
     let mockQuestionID: Buffer;
     let mockQuestionID_2: Buffer;
     let mockQuestionID_3: Buffer;
-    let answerID: AnswerID;
     let alicePrivateKey: PrivateKey;
     let alice: PublicKey;
 
@@ -67,7 +62,7 @@ describe("Examina", () => {
             }
         ]
 
-        const mockExam: Exam120 = new Exam120(Field(3), alice, mockQuestions, Field(1239921391912), Field(129278371281121))
+        const mockExam: Exam120 = new Exam120(UInt64.from(3), alice, UInt64.from(1), mockQuestions);
 
 
         const tx1 = await appChain.transaction(alice, () => {
@@ -84,17 +79,16 @@ describe("Examina", () => {
         expect(block?.transactions[0].status.toBoolean()).toBe(true);
         expect(exam != undefined).toBe(true);
         expect(exam?.questions_count.toString()).toBe("3");
+        expect(exam?.isActive.toString()).toBe("1");
         console.log("------------------------END OF CREATE EXAM TEST ----------------------")
     }, 150_000);
     it("should submit an answer", async () => {
+        const exam_again = await appChain.query.runtime.Examina.exams.get(mockExamID_1);
+        expect(exam_again?.isActive.toString()).toBe("1");
         const mockUserID_Buffer = Buffer.from("USR91290211");
         const mockUserID_1 = Poseidon.hash([Field(mockUserID_Buffer.toString("hex"))]);
-        console.log("MockUserID: ",mockUserID_1);
-        console.log("MockExamID: ",mockExamID_1);
-        console.log("QuestionID: ", Poseidon.hash([Field(mockQuestionID.toString("hex"))]));
         const mockAnswer = new UserAnswer(mockQuestions[0], Field(1));
         const answerID: AnswerID = new AnswerID(mockExamID_1, Poseidon.hash([Field(mockQuestionID.toString("hex"))]), mockUserID_1);
-        console.log("AnswerID: ",answerID);
         const tx2 = await appChain.transaction(alice, () => {
             examina.submitUserAnswer(answerID, mockAnswer);
         });
@@ -102,6 +96,8 @@ describe("Examina", () => {
         await tx2.send();
         const block2 = await appChain.produceBlock();
         console.log(tx2)
+        const exam = await appChain.query.runtime.Examina.exams.get(mockExamID_1);
+        console.log("ExaM: ", exam);
         const userAnswer = await appChain.query.runtime.Examina.answers.get(answerID);
         console.log(block2);
         expect(block2?.transactions[0].status.toBoolean()).toBe(true);

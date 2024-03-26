@@ -13,13 +13,15 @@ import {
     PublicKey,
     Struct,
     Experimental,
-    arrayProp
+    arrayProp,
+    UInt64
 } from "o1js";
 import { Controller } from "./Controller";
 import {
     CalculateScore
 } from './ScoreCalculation';
 import { UInt240 } from "./UInt240";
+import { isBool } from "o1js/dist/node/lib/bool";
 
 
 await CalculateScore.compile();
@@ -63,25 +65,22 @@ export class UserAnswer extends Struct({
     }
 }
 export class Exam120 extends Struct({
-    questions_count: Field,
+    questions_count: UInt64,
     creator: PublicKey,
+    isActive: UInt64, // 0 = not started, 1 = started, 2 = ended
     questions: Provable.Array(Question, 120),
-    start_time: Field,
-    end_time: Field,
 }) {
     constructor(
-        questions_count: Field,
+        questions_count: UInt64,
         creator: PublicKey,
+        isActive: UInt64,
         questions: Question[],
-        start_time: Field,
-        end_time: Field
     ) {
-        super({ questions_count, creator, questions, start_time, end_time});
+        super({ questions_count, creator, isActive, questions});
         this.questions_count = questions_count;
         this.creator = creator;
+        this.isActive = UInt64.from(1);
         this.questions = questions;
-        this.start_time = start_time;
-        this.end_time = end_time;
     }
 }
 export class AnswerID extends Struct({
@@ -102,14 +101,14 @@ export class Examina extends RuntimeModule<ExamConfig> {
     @state() public answers = StateMap.from<AnswerID, UserAnswer>(AnswerID, UserAnswer);
 
     @runtimeMethod()
-    public createExam(examID: Field, Exam: Exam120): void {
-        this.exams.set(examID, Exam);
+    public createExam(examID: Field, exam: Exam120): void {
+        this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, exam.isActive, exam.questions));
     }
 
     @runtimeMethod()
     public submitUserAnswer(answerID: AnswerID, answer: UserAnswer): void {
-        const start_time = this.exams.get(answerID.examID).value.start_time;
-        const end_time = this.exams.get(answerID.examID).value.end_time;
+        console.log("isActive : ", this.exams.get(answerID.examID).value.isActive.toString());
+        this.exams.get(answerID.examID).value.isActive.assertEquals(UInt64.from(1));
         this.answers.set(answerID, answer);
     }
 
@@ -117,6 +116,7 @@ export class Examina extends RuntimeModule<ExamConfig> {
     public publishExamCorrectAnswers(examID: Field, questions: Questions): void {
         const exam = this.exams.get(examID).value;
         exam.questions = questions.array;
+        exam.isActive = UInt64.from(2);
         this.exams.set(examID, exam);
     }
 
