@@ -2,11 +2,16 @@ import { TestingAppChain } from "@proto-kit/sdk";
 import { CircuitString, Field, Poseidon, PrivateKey, PublicKey, UInt64 } from "o1js";
 import { AnswerID, Exam120, Examina, Question, UserAnswer } from "../src/Examina";
 import { log } from "@proto-kit/common";
+import { InMemoryDatabase, LocalTaskWorkerModule, PrivateMempool, SettlementModule } from "@proto-kit/sequencer";
 log.setLevel("DEBUG");
 
 describe("Examina", () => {   
     
-    let appChain: any; 
+    let appChain = TestingAppChain.fromRuntime({
+        modules: {
+            Examina,
+        },
+    });
     let examina: Examina;
     let exam: Exam120 | undefined;
     let mockExamID_Buffer: Buffer;
@@ -24,15 +29,6 @@ describe("Examina", () => {
 
 
     beforeAll(async () => {
-        
-    });
-
-    it("should create an exam", async () => {
-        appChain = TestingAppChain.fromRuntime({
-            modules: {
-                Examina,
-            },
-        });
         appChain.configurePartial({
             Runtime: {
                 Examina: {
@@ -44,6 +40,10 @@ describe("Examina", () => {
         alice = alicePrivateKey.toPublicKey();
         await appChain.start();
         examina = appChain.runtime.resolve("Examina");
+        appChain.setSigner(alicePrivateKey);
+    });
+
+    it("should create an exam", async () => {
         mockExamID_Buffer = Buffer.from("BDD91290211");
         mockExamID_1 = Poseidon.hash([Field(mockExamID_Buffer.toString("hex"))])
         mockQuestionID = Buffer.from("QD1");
@@ -68,7 +68,6 @@ describe("Examina", () => {
         ]
 
         const mockExam: Exam120 = new Exam120(Field(3), alice, mockQuestions, Field(1239921391912), Field(129278371281121))
-        appChain.setSigner(alicePrivateKey);
 
 
         const tx1 = await appChain.transaction(alice, () => {
@@ -85,6 +84,7 @@ describe("Examina", () => {
         expect(block?.transactions[0].status.toBoolean()).toBe(true);
         expect(exam != undefined).toBe(true);
         expect(exam?.questions_count.toString()).toBe("3");
+        console.log("------------------------END OF CREATE EXAM TEST ----------------------")
     }, 150_000);
     it("should submit an answer", async () => {
         const mockUserID_Buffer = Buffer.from("USR91290211");
