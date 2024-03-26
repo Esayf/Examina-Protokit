@@ -102,13 +102,12 @@ export class Examina extends RuntimeModule<ExamConfig> {
 
     @runtimeMethod()
     public createExam(examID: Field, exam: Exam120): void {
-        this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, new UInt64(1), exam.questions));
+        this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, UInt64.from(1), exam.questions));
     }
 
     @runtimeMethod()
     public submitUserAnswer(answerID: AnswerID, answer: UserAnswer): void {
-        console.log("isActive : ", this.exams.get(answerID.examID).value.isActive.toString());
-        this.exams.get(answerID.examID).value.isActive.assertEquals(UInt64.from(1));
+        assert(this.exams.get(answerID.examID).value.isActive.equals(UInt64.from(1)));
         this.answers.set(answerID, answer);
     }
 
