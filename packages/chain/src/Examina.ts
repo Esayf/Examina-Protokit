@@ -79,7 +79,7 @@ export class Exam120 extends Struct({
         super({ questions_count, creator, isActive, questions});
         this.questions_count = questions_count;
         this.creator = creator;
-        this.isActive = UInt64.from(1);
+        this.isActive = isActive;
         this.questions = questions;
     }
 }
@@ -102,7 +102,7 @@ export class Examina extends RuntimeModule<ExamConfig> {
 
     @runtimeMethod()
     public createExam(examID: Field, exam: Exam120): void {
-        this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, exam.isActive, exam.questions));
+        this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, new UInt64(1), exam.questions));
     }
 
     @runtimeMethod()
