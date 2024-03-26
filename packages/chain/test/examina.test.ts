@@ -3,7 +3,7 @@ import { Bool, CircuitString, Field, Poseidon, PrivateKey, PublicKey, UInt64 } f
 import { AnswerID, Exam120, Examina, Question, UserAnswer } from "../src/Examina";
 import { log } from "@proto-kit/common";
 import { InMemoryDatabase, LocalTaskWorkerModule, PrivateMempool, SettlementModule } from "@proto-kit/sequencer";
-log.setLevel("ERROR");
+log.setLevel("DEBUG");
 
 describe("Examina", () => {
 
@@ -83,6 +83,28 @@ describe("Examina", () => {
         console.log("------------------------END OF CREATE EXAM TEST ----------------------")
     }, 150_000);
     it("should submit an answer", async () => {
+        mockExamID_Buffer = Buffer.from("BDD91290211");
+        mockExamID_1 = Poseidon.hash([Field(mockExamID_Buffer.toString("hex"))])
+        mockQuestionID = Buffer.from("QD1");
+        mockQuestionID_2 = Buffer.from("QD2");
+        mockQuestionID_3 = Buffer.from("QD3");
+        mockQuestions = [
+            {
+                questionID: Poseidon.hash([Field(mockQuestionID.toString("hex"))]),
+                questionHash: CircuitString.fromString("What is 1 + 1?").hash(),
+                correct_answer: Field(0),
+            },
+            {
+                questionID: Poseidon.hash([Field(mockQuestionID_2.toString("hex"))]),
+                questionHash: CircuitString.fromString("What is 2 + 2?").hash(),
+                correct_answer: Field(0),
+            },
+            {
+                questionID: Poseidon.hash([Field(mockQuestionID_3.toString("hex"))]),
+                questionHash: CircuitString.fromString("What is 3 + 3?").hash(),
+                correct_answer: Field(0),
+            }
+        ]
         const exam_again = await appChain.query.runtime.Examina.exams.get(mockExamID_1);
         expect(exam_again?.isActive.toString()).toBe("1");
         const mockUserID_Buffer = Buffer.from("USR91290211");
@@ -95,11 +117,8 @@ describe("Examina", () => {
         await tx2.sign();
         await tx2.send();
         const block2 = await appChain.produceBlock();
-        console.log(tx2)
         const exam = await appChain.query.runtime.Examina.exams.get(mockExamID_1);
-        console.log("ExaM: ", exam);
         const userAnswer = await appChain.query.runtime.Examina.answers.get(answerID);
-        console.log(block2);
         expect(block2?.transactions[0].status.toBoolean()).toBe(true);
         expect(userAnswer != undefined).toBe(true);
     }, 150_000);

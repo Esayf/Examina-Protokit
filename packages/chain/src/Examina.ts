@@ -107,7 +107,7 @@ export class Examina extends RuntimeModule<ExamConfig> {
 
     @runtimeMethod()
     public submitUserAnswer(answerID: AnswerID, answer: UserAnswer): void {
-        assert(this.exams.get(answerID.examID).value.isActive.equals(UInt64.from(1)));
+        assert(this.exams.get(answerID.examID).value.isActive.equals(UInt64.from(1)), "Exam is not active");
         this.answers.set(answerID, answer);
     }
 
