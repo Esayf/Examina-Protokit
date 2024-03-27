@@ -4,16 +4,13 @@ import {
     state,
     runtimeMethod,
 } from "@proto-kit/module";
-import { State, StateMap, assert } from "@proto-kit/protocol";
+import { StateMap, assert } from "@proto-kit/protocol";
 import {
-    Bool,
     Field,
-    PrivateKey,
     Provable,
     PublicKey,
     Struct,
     Experimental,
-    arrayProp,
     UInt64
 } from "o1js";
 import { Controller } from "./Controller";
@@ -21,8 +18,6 @@ import {
     CalculateScore
 } from './ScoreCalculation';
 import { UInt240 } from "./UInt240";
-import { isBool } from "o1js/dist/node/lib/bool";
-
 
 await CalculateScore.compile();
 
@@ -55,12 +50,12 @@ export class Questions extends Struct ({
     }
 }
 export class UserAnswer extends Struct({
-    question: Question,
+    questionID: Field,
     answer: Field,
 }) {
-    constructor(question: Question, answer: Field) {
-        super({ question, answer });
-        this.question = question;
+    constructor(questionID: Field, answer: Field) {
+        super({ questionID, answer });
+        this.questionID = questionID;
         this.answer = answer;
     }
 }
@@ -80,6 +75,9 @@ export class Exam120 extends Struct({
         this.questions_count = questions_count;
         this.creator = creator;
         this.isActive = isActive;
+        for(let i = Number(questions_count.toBigInt()); i < 120; i++) {
+            questions[i] = new Question(Field.from(0), Field.from(0), Field.from(0));
+        }
         this.questions = questions;
     }
 }
@@ -119,6 +117,7 @@ export class Examina extends RuntimeModule<ExamConfig> {
         this.exams.set(examID, exam);
     }
 
+    @runtimeMethod()
     public getUserAnswers(examID: Field, userID: Field): Field[] {
         const exam = this.exams.get(examID).value;
         let userAnswers: Field[] = [];
@@ -133,7 +132,6 @@ export class Examina extends RuntimeModule<ExamConfig> {
     @runtimeMethod()
     public checkUserScore(proof: CalculateProof, controller: Controller) {
         proof.verify();
-        const answers = this.getUserAnswers(controller.examID, controller.userID);
         const incorrectToCorrectRatio = this.config.incorrectToCorrectRatio;
 
         const secureHash = controller.secureHash;
