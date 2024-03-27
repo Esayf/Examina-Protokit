@@ -4,23 +4,20 @@ import {
     state,
     runtimeMethod,
 } from "@proto-kit/module";
-import { State, StateMap, assert } from "@proto-kit/protocol";
+import { StateMap, assert } from "@proto-kit/protocol";
 import {
-    Bool,
     Field,
-    PrivateKey,
     Provable,
     PublicKey,
     Struct,
     Experimental,
-    arrayProp
+    UInt64
 } from "o1js";
 import { Controller } from "./Controller";
 import {
     CalculateScore
 } from './ScoreCalculation';
 import { UInt240 } from "./UInt240";
-
 
 await CalculateScore.compile();
 
@@ -53,35 +50,35 @@ export class Questions extends Struct ({
     }
 }
 export class UserAnswer extends Struct({
-    question: Question,
+    questionID: Field,
     answer: Field,
 }) {
-    constructor(question: Question, answer: Field) {
-        super({ question, answer });
-        this.question = question;
+    constructor(questionID: Field, answer: Field) {
+        super({ questionID, answer });
+        this.questionID = questionID;
         this.answer = answer;
     }
 }
 export class Exam120 extends Struct({
-    questions_count: Field,
+    questions_count: UInt64,
     creator: PublicKey,
+    isActive: UInt64, // 0 = not started, 1 = started, 2 = ended
     questions: Provable.Array(Question, 120),
-    start_time: Field,
-    end_time: Field,
 }) {
     constructor(
-        questions_count: Field,
+        questions_count: UInt64,
         creator: PublicKey,
+        isActive: UInt64,
         questions: Question[],
-        start_time: Field,
-        end_time: Field
     ) {
-        super({ questions_count, creator, questions, start_time, end_time});
+        super({ questions_count, creator, isActive, questions});
         this.questions_count = questions_count;
         this.creator = creator;
+        this.isActive = isActive;
+        for(let i = Number(questions_count.toBigInt()); i < 120; i++) {
+            questions[i] = new Question(Field.from(0), Field.from(0), Field.from(0));
+        }
         this.questions = questions;
-        this.start_time = start_time;
-        this.end_time = end_time;
     }
 }
 export class AnswerID extends Struct({
@@ -102,14 +99,13 @@ export class Examina extends RuntimeModule<ExamConfig> {
     @state() public answers = StateMap.from<AnswerID, UserAnswer>(AnswerID, UserAnswer);
 
     @runtimeMethod()
-    public createExam(examID: Field, Exam: Exam120): void {
-        this.exams.set(examID, Exam);
+    public createExam(examID: Field, exam: Exam120): void {
+        this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, UInt64.from(1), exam.questions));
     }
 
     @runtimeMethod()
     public submitUserAnswer(answerID: AnswerID, answer: UserAnswer): void {
-        const start_time = this.exams.get(answerID.examID).value.start_time;
-        const end_time = this.exams.get(answerID.examID).value.end_time;
+        assert(this.exams.get(answerID.examID).value.isActive.equals(UInt64.from(1)), "Exam is not active");
         this.answers.set(answerID, answer);
     }
 
@@ -117,9 +113,11 @@ export class Examina extends RuntimeModule<ExamConfig> {
     public publishExamCorrectAnswers(examID: Field, questions: Questions): void {
         const exam = this.exams.get(examID).value;
         exam.questions = questions.array;
+        exam.isActive = UInt64.from(2);
         this.exams.set(examID, exam);
     }
 
+    @runtimeMethod()
     public getUserAnswers(examID: Field, userID: Field): Field[] {
         const exam = this.exams.get(examID).value;
         let userAnswers: Field[] = [];
@@ -134,7 +132,6 @@ export class Examina extends RuntimeModule<ExamConfig> {
     @runtimeMethod()
     public checkUserScore(proof: CalculateProof, controller: Controller) {
         proof.verify();
-        const answers = this.getUserAnswers(controller.examID, controller.userID);
         const incorrectToCorrectRatio = this.config.incorrectToCorrectRatio;
 
         const secureHash = controller.secureHash;
