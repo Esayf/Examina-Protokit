@@ -10,25 +10,33 @@ import {
     Provable,
     PublicKey,
     Struct,
-    Experimental,
     UInt64,
     Poseidon
 } from "o1js";
-import { Controller } from "./Controller";
-import {
-    CalculateScore
-} from './ScoreCalculation';
-import { UInt240 } from "./UInt240";
-
-await CalculateScore.compile();
-
-class CalculateProof extends Experimental.ZkProgram.Proof(CalculateScore) {}
 
 interface ExamConfig { 
     incorrectToCorrectRatio: Field;
 }
 
+export class ScoreController extends Struct({
+    corrects: Field,
+    incorrects: Field
+}) {
+    constructor(corrects: Field, incorrects: Field) {
+        super({ corrects, incorrects });
+        this.corrects = corrects;
+        this.incorrects = incorrects;
+    }
 
+    correct(): ScoreController {
+        this.corrects = this.corrects.add(Field.from(1));
+        return this;
+    }
+    incorrect(): ScoreController {
+        this.incorrects = this.incorrects.add(Field.from(1));
+        return this;
+    }
+}
 export class Question extends Struct({
     questionID: Field,
     questionHash: Field,
@@ -122,34 +130,39 @@ export class Examina extends RuntimeModule<ExamConfig> {
         this.exams.set(examID, exam);
     }
 
-    @runtimeMethod()
-    public getUserAnswers(examID: Field, userID: Field): Field[] {
+    public getUserAnswers(examID: Field, userID: Field): [Field[], Field[]] {
         const exam = this.exams.get(examID).value;
         let userAnswers: Field[] = [];
-        for (const question of exam.questions) {
-            const answerID = new AnswerID(examID, question.questionID, userID);
-            const answer = this.answers.get(answerID);
-            userAnswers.push(answer.value.answer);
+        let correctAnswers: Field[] = [];
+        for (let i = 0; i < exam.questions_count.toBigInt(); i++) {
+            const answerID = new AnswerID(examID, exam.questions[i].questionID, userID);
+            const answer = this.answers.get(answerID).value;
+            userAnswers.push(answer.answer);
+            correctAnswers.push(exam.questions[i].correct_answer);
         }
-        return userAnswers;
+        return [correctAnswers, userAnswers];
+    }
+
+    public calculateScore(correctAnswers: Field[], userAnswers: Field[]): Field {
+        const incorrects = Field.from(0);
+        const corrects = Field.from(0);
+        let scoreController = new ScoreController(corrects, incorrects);
+        for (let i = 0; i < correctAnswers.length; i++) {
+            const newScore = Provable.if(
+            correctAnswers[i].equals(userAnswers[i]), 
+            ScoreController, 
+            new ScoreController(scoreController.corrects.add(Field(1)), scoreController.incorrects) , 
+            new ScoreController (scoreController.corrects, scoreController.incorrects.add(Field(1))));
+            scoreController = new ScoreController(newScore.corrects, newScore.incorrects);
+        }
+        const quotient = scoreController.incorrects.div(this.config.incorrectToCorrectRatio);
+        return scoreController.corrects.sub(quotient);
     }
 
     @runtimeMethod()
-    public checkUserScore(proof: CalculateProof, controller: Controller) {
-        proof.verify();
-        const incorrectToCorrectRatio = this.config.incorrectToCorrectRatio;
-
-        const secureHash = controller.secureHash;
-        proof.publicInput.assertEquals(secureHash);
-
-        secureHash.assertEquals(controller.hash());        
-
-        const incorrects = proof.publicOutput.incorrects;
-        const corrects = proof.publicOutput.corrects;
-        const quotient = incorrects.div(UInt240.from(incorrectToCorrectRatio.toBigInt()));
-
-        const score = corrects.sub(quotient);
-
+    public checkUserScore(userID: Field, examID: Field): Field {
+        const [correctAnswers, userAnswers] = this.getUserAnswers(examID, userID);
+        const score = this.calculateScore(correctAnswers, userAnswers);
         return score;
-    } 
+    }
 }

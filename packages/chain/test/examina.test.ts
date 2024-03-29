@@ -2,9 +2,7 @@ import { TestingAppChain } from "@proto-kit/sdk";
 import { CircuitString, Field, Poseidon, PrivateKey, PublicKey, UInt64 } from "o1js";
 import { AnswerID, Exam120, Examina, Question, Questions, UserAnswer } from "../src/Examina";
 import { log } from "@proto-kit/common";
-import { CalculateScore } from "../src/ScoreCalculation";
-import { Controller } from "../src/Controller";
-log.setLevel("ERROR");
+log.setLevel("DEBUG");
 
 describe("Examina", () => {
 
@@ -39,7 +37,7 @@ describe("Examina", () => {
         appChain.configurePartial({
             Runtime: {
                 Examina: {
-                    incorrectToCorrectRatio: UInt64.from(0),
+                    incorrectToCorrectRatio: UInt64.from(3),
                 },
             },
         });
@@ -172,34 +170,13 @@ describe("Examina", () => {
         expect(exam?.isActive.toString()).toBe("2");
     }, 150_000);
     it("should calculate score", async () => {
-        let index = Field(1).div(Field(10));
-        const answers = Field(mockQuestions[0].correct_answer.toString() + mockQuestions[1].correct_answer.toString() + mockQuestions[2].correct_answer.toString());
-        const userAnswers = Field(userAnswer!.answer.toString() + userAnswer_2?.answer.toString() + userAnswer_3?.answer.toString());
-        let secureHash = Poseidon.hash([answerID.hash(), userAnswers, index]);
-        const controller = new Controller(secureHash, answers, userAnswers, Field(1), mockExamID_1, mockUserID_1);
-
-        // Generate secureHash by using Poseidon.hash([answer, userAnswer, index])
-        //Generate calculateProof by using ScoreCalculation Recursion
-        let proof = await CalculateScore.baseCase(secureHash, answers, userAnswers, index)
-        let publicOutputs = proof.publicOutput
-        console.log("starting recursion score:", publicOutputs.corrects.toString())
-
-        for (let i = 0; i < 3; i++) {
-            index = index.mul(10)
-            secureHash = Poseidon.hash([answers, userAnswers, index])
-            proof = await CalculateScore.calculate(secureHash, proof, answers, userAnswers, index)
-            publicOutputs = proof.publicOutput
-            
-            console.log("recursion score:", publicOutputs.corrects.toString())
-        }
-        expect(publicOutputs.corrects).toEqual(Field.from(3))
-        expect(publicOutputs.incorrects).toEqual(Field.from(0))
         const tx4 = await appChain.transaction(alice, () => {
-            examina.checkUserScore(proof, controller);
+            examina.checkUserScore(mockUserID_1, mockExamID_1);
         });
         await tx4.sign();
         await tx4.send();
         const block4 = await appChain.produceBlock();
+        console.log("Block4: ", block4);
         expect(block4?.transactions[0].status.toBoolean()).toBe(true);
     }, 150_000);
 });
