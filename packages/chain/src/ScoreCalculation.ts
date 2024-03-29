@@ -2,11 +2,12 @@ import { Field, Experimental, SelfProof, Provable, Struct, Poseidon, Int64, UInt
 import { UInt240 } from "./UInt240.js"
 
 const 
-    INITIAL_INDEX = 0,
     INITIAL_CORRECTS = 0,
     INITIAL_INCORRECTS = 0,
     BLANK_VALUE = 0,
-    INCREMENT = 1;
+    INCREMENT = 1,
+    ANSWER_DIVISOR = UInt240.from(10n),
+    INDEX_MULTIPLIER = 10;
 
 export class PublicOutputs extends Struct({
     corrects: UInt240,
@@ -33,6 +34,7 @@ export class PublicOutputs extends Struct({
     }
 }
 
+
 export const CalculateScore = Experimental.ZkProgram({
     name: "calculate-score",
     publicInput: Field,
@@ -41,9 +43,11 @@ export const CalculateScore = Experimental.ZkProgram({
     methods: {
         baseCase: {
             privateInputs: [Field, Field, Field],
-            method(secureHash: Field, answer: Field, userAnswer: Field, index: Field) {
-                index.assertEquals(INITIAL_INDEX);
-                secureHash.assertEquals(Poseidon.hash([answer, userAnswer, index]));
+
+            method(secureHash: Field, answers: Field, userAnswers: Field, index: Field) {
+                index.mul(INDEX_MULTIPLIER).assertEquals(1);
+                secureHash.assertEquals(Poseidon.hash([answers, userAnswers, index]));
+
                 return new PublicOutputs(UInt240.from(INITIAL_CORRECTS), UInt240.from(INITIAL_INCORRECTS));
             },
         },
@@ -54,15 +58,29 @@ export const CalculateScore = Experimental.ZkProgram({
             method (
                 secureHash: Field,
                 earlierProof: SelfProof<Field, PublicOutputs>,
-                answer: Field,
-                userAnswer: Field,
+                answers: Field,
+                userAnswers: Field,
                 index: Field
             ) { 
                 earlierProof.verify();
                 
-                earlierProof.publicInput.assertEquals(Poseidon.hash([answer, userAnswer, index.sub(1)]));
-                secureHash.assertEquals(Poseidon.hash([answer, userAnswer, index]));
-                const equation = answer.equals(BLANK_VALUE).not().and(answer.equals(userAnswer));
+                earlierProof.publicInput.assertEquals(Poseidon.hash([answers, userAnswers, index.div(INDEX_MULTIPLIER)]));
+                secureHash.assertEquals(Poseidon.hash([answers, userAnswers, index]));
+
+                
+            
+                const publicOutputs = earlierProof.publicOutput;
+
+                const i = UInt240.from(index);
+
+                const a = UInt240.from(answers);
+                const ua = UInt240.from(userAnswers);
+
+                const remainderOfAnswers = a.div(i).mod(ANSWER_DIVISOR).toField();
+                const remainderOfUserAnswers = ua.div(i).mod(ANSWER_DIVISOR).toField();
+
+                const equation = remainderOfAnswers.equals(BLANK_VALUE).not().and(remainderOfAnswers.equals(remainderOfUserAnswers));
+
                 const newPublicOutput = Provable.if (
                     equation,
                     PublicOutputs,

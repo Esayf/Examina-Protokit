@@ -11,7 +11,8 @@ import {
     PublicKey,
     Struct,
     Experimental,
-    UInt64
+    UInt64,
+    Poseidon
 } from "o1js";
 import { Controller } from "./Controller";
 import {
@@ -91,6 +92,10 @@ export class AnswerID extends Struct({
         this.examID = examID;
         this.questionID = questionID;
         this.userID = userID;
+    }
+
+    public hash(): Field {
+        return Poseidon.hash([this.examID, this.questionID, this.userID]);
     }
 }
 @runtimeModule()

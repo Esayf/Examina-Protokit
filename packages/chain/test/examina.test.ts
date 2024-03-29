@@ -1,9 +1,10 @@
 import { TestingAppChain } from "@proto-kit/sdk";
-import { Bool, CircuitString, Field, Poseidon, PrivateKey, PublicKey, UInt64 } from "o1js";
+import { CircuitString, Field, Poseidon, PrivateKey, PublicKey, UInt64 } from "o1js";
 import { AnswerID, Exam120, Examina, Question, Questions, UserAnswer } from "../src/Examina";
 import { log } from "@proto-kit/common";
-import { InMemoryDatabase, LocalTaskWorkerModule, PrivateMempool, SettlementModule } from "@proto-kit/sequencer";
-log.setLevel("DEBUG");
+import { CalculateScore } from "../src/ScoreCalculation";
+import { Controller } from "../src/Controller";
+log.setLevel("ERROR");
 
 describe("Examina", () => {
 
@@ -26,6 +27,12 @@ describe("Examina", () => {
     let mockUserID_Buffer: Buffer;
     let alicePrivateKey: PrivateKey;
     let alice: PublicKey;
+    let answerID: AnswerID;
+    let answerID_2: AnswerID;
+    let answerID_3: AnswerID;
+    let userAnswer: UserAnswer | undefined;
+    let userAnswer_2: UserAnswer | undefined;
+    let userAnswer_3: UserAnswer | undefined;
 
 
     beforeAll(async () => {
@@ -95,45 +102,45 @@ describe("Examina", () => {
         expect(exam_again?.isActive.toString()).toBe("1");
         mockUserID_Buffer = Buffer.from("USR91290211");
         mockUserID_1 = Poseidon.hash([Field(mockUserID_Buffer.toString("hex"))]);
-        const mockAnswer = new UserAnswer(questionID, Field(1));
-        const answerID: AnswerID = new AnswerID(mockExamID_1, questionID, mockUserID_1);
+        const mockAnswer = new UserAnswer(questionID, Field(2));
+        answerID = new AnswerID(mockExamID_1, questionID, mockUserID_1);
         const tx2 = await appChain.transaction(alice, () => {
             examina.submitUserAnswer(answerID, mockAnswer);
         });
         await tx2.sign();
         await tx2.send();
         const block2 = await appChain.produceBlock();
-        const userAnswer = await appChain.query.runtime.Examina.answers.get(answerID);
+        userAnswer = await appChain.query.runtime.Examina.answers.get(answerID);
         expect(block2?.transactions[0].status.toBoolean()).toBe(true);
         expect(userAnswer != undefined).toBe(true);
     }, 150_000);
     it("should get user answers", async () => {
-        const mockAnswer = new UserAnswer(questionID_2, Field(1));
-        const mockAnswer_2 = new UserAnswer(questionID_3, Field(2));
-        const answerID: AnswerID = new AnswerID(mockExamID_1, questionID_2, mockUserID_1);
+        const mockAnswer_2 = new UserAnswer(questionID_2, Field(3));
+        const mockAnswer_3 = new UserAnswer(questionID_3, Field(1));
+        answerID_2 = new AnswerID(mockExamID_1, questionID_2, mockUserID_1);
         const tx2 = await appChain.transaction(alice, () => {
-            examina.submitUserAnswer(answerID, mockAnswer);
+            examina.submitUserAnswer(answerID_2, mockAnswer_2);
         });
         await tx2.sign();
         await tx2.send();
         const block2 = await appChain.produceBlock();
-        const userAnswer = await appChain.query.runtime.Examina.answers.get(answerID);
+        userAnswer = await appChain.query.runtime.Examina.answers.get(answerID);
         expect(block2?.transactions[0].status.toBoolean()).toBe(true);
         expect(userAnswer != undefined).toBe(true);
-        const answerID_2: AnswerID = new AnswerID(mockExamID_1, questionID_3, mockUserID_1);
+        const answerID_3: AnswerID = new AnswerID(mockExamID_1, questionID_3, mockUserID_1);
         const tx3 = await appChain.transaction(alice, () => {
-            examina.submitUserAnswer(answerID_2, mockAnswer_2);
+            examina.submitUserAnswer(answerID_3, mockAnswer_3);
         });
         await tx3.sign();
         await tx3.send();
         const block3 = await appChain.produceBlock();
-        const userAnswer_2 = await appChain.query.runtime.Examina.answers.get(answerID);
+        userAnswer_2 = await appChain.query.runtime.Examina.answers.get(answerID_2);
         expect(block3?.transactions[0].status.toBoolean()).toBe(true);
         expect(userAnswer_2 != undefined).toBe(true);
-        const userAnswer_3 = await appChain.query.runtime.Examina.answers.get(answerID_2);
+        userAnswer_3 = await appChain.query.runtime.Examina.answers.get(answerID_3);
         expect(userAnswer_3 != undefined).toBe(true);
-        expect(userAnswer_2?.answer.toString()).toBe("1");
-        expect(userAnswer_3?.answer.toString()).toBe("2");
+        expect(userAnswer_2?.answer.toString()).toBe("3");
+        expect(userAnswer_3?.answer.toString()).toBe("1");
     }, 150_000);
     it("should publishExamCorrectAnswers", async () => {
         
@@ -165,8 +172,30 @@ describe("Examina", () => {
         expect(exam?.isActive.toString()).toBe("2");
     }, 150_000);
     it("should calculate score", async () => {
+        let index = Field(1).div(Field(10));
+        const answers = Field(mockQuestions[0].correct_answer.toString() + mockQuestions[1].correct_answer.toString() + mockQuestions[2].correct_answer.toString());
+        const userAnswers = Field(userAnswer!.answer.toString() + userAnswer_2?.answer.toString() + userAnswer_3?.answer.toString());
+        let secureHash = Poseidon.hash([answerID.hash(), userAnswers, index]);
+        const controller = new Controller(secureHash, answers, userAnswers, Field(1), mockExamID_1, mockUserID_1);
+
+        // Generate secureHash by using Poseidon.hash([answer, userAnswer, index])
+        //Generate calculateProof by using ScoreCalculation Recursion
+        let proof = await CalculateScore.baseCase(secureHash, answers, userAnswers, index)
+        let publicOutputs = proof.publicOutput
+        console.log("starting recursion score:", publicOutputs.corrects.toString())
+
+        for (let i = 0; i < 3; i++) {
+            index = index.mul(10)
+            secureHash = Poseidon.hash([answers, userAnswers, index])
+            proof = await CalculateScore.calculate(secureHash, proof, answers, userAnswers, index)
+            publicOutputs = proof.publicOutput
+            
+            console.log("recursion score:", publicOutputs.corrects.toString())
+        }
+        expect(publicOutputs.corrects).toEqual(Field.from(3))
+        expect(publicOutputs.incorrects).toEqual(Field.from(0))
         const tx4 = await appChain.transaction(alice, () => {
-            examina.checkUserScore(calculateProof, controller);
+            examina.checkUserScore(proof, controller);
         });
         await tx4.sign();
         await tx4.send();
