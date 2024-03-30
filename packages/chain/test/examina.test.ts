@@ -1,8 +1,8 @@
 import { TestingAppChain } from "@proto-kit/sdk";
 import { CircuitString, Field, Poseidon, PrivateKey, PublicKey, UInt64 } from "o1js";
-import { AnswerID, Exam120, Examina, Question, Questions, UserAnswer } from "../src/Examina";
+import { AnswerID, Exam120, Examina, Question, Questions, UserAnswer, UserExam } from "../src/Examina";
 import { log } from "@proto-kit/common";
-log.setLevel("DEBUG");
+log.setLevel("ERROR");
 
 describe("Examina", () => {
 
@@ -156,9 +156,17 @@ describe("Examina", () => {
             {
                 questionID: Poseidon.hash([Field(mockQuestionID_3.toString("hex"))]),
                 questionHash: CircuitString.fromString("What is 3 + 3?").hash(),
-                correct_answer: Field(1),
+                correct_answer: Field(2),
             }
         ]};
+        const zeroQuestion = {
+            questionID: Field(0),
+            questionHash: Field(0),
+            correct_answer: Field(0),
+        }
+        for (let i = 0; i < 120 - 3; i++) {
+            mockCorrectAnswers.array.push(zeroQuestion);
+        }
         const tx3 = await appChain.transaction(alice, () => {
             examina.publishExamCorrectAnswers(mockExamID_1, mockCorrectAnswers);
         });
@@ -177,6 +185,9 @@ describe("Examina", () => {
         await tx4.send();
         const block4 = await appChain.produceBlock();
         console.log("Block4: ", block4);
+        const userScore = await appChain.query.runtime.Examina.userScores.get(new UserExam(mockExamID_1, mockUserID_1));
         expect(block4?.transactions[0].status.toBoolean()).toBe(true);
+        expect(userScore != undefined).toBe(true);
+        expect(userScore?.toString()).toBe("2");
     }, 150_000);
 });

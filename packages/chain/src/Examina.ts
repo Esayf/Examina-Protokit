@@ -90,6 +90,17 @@ export class Exam120 extends Struct({
         this.questions = questions;
     }
 }
+
+export class UserExam extends Struct({
+    examID: Field,
+    userID: Field
+}) {
+    constructor(examID: Field, userID: Field) {
+        super({ examID, userID });
+        this.examID = examID;
+        this.userID = userID;
+    }
+}
 export class AnswerID extends Struct({
     examID: Field,
     questionID: Field,
@@ -110,7 +121,7 @@ export class AnswerID extends Struct({
 export class Examina extends RuntimeModule<ExamConfig> {
     @state() public exams = StateMap.from<Field, Exam120>(Field, Exam120);
     @state() public answers = StateMap.from<AnswerID, UserAnswer>(AnswerID, UserAnswer);
-
+    @state() public userScores = StateMap.from<UserExam, Field>(UserExam, Field);
     @runtimeMethod()
     public createExam(examID: Field, exam: Exam120): void {
         this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, UInt64.from(1), exam.questions));
@@ -144,25 +155,23 @@ export class Examina extends RuntimeModule<ExamConfig> {
     }
 
     public calculateScore(correctAnswers: Field[], userAnswers: Field[]): Field {
-        const incorrects = Field.from(0);
-        const corrects = Field.from(0);
-        let scoreController = new ScoreController(corrects, incorrects);
+        let scoreController = new ScoreController(Field(0), Field(0));
         for (let i = 0; i < correctAnswers.length; i++) {
             const newScore = Provable.if(
-            correctAnswers[i].equals(userAnswers[i]), 
+            correctAnswers[i].equals(userAnswers[i]).and(correctAnswers[i].isConstant()), 
             ScoreController, 
             new ScoreController(scoreController.corrects.add(Field(1)), scoreController.incorrects) , 
             new ScoreController (scoreController.corrects, scoreController.incorrects.add(Field(1))));
             scoreController = new ScoreController(newScore.corrects, newScore.incorrects);
         }
-        const quotient = scoreController.incorrects.div(this.config.incorrectToCorrectRatio);
-        return scoreController.corrects.sub(quotient);
+        return scoreController.corrects;
     }
 
     @runtimeMethod()
     public checkUserScore(userID: Field, examID: Field): Field {
         const [correctAnswers, userAnswers] = this.getUserAnswers(examID, userID);
         const score = this.calculateScore(correctAnswers, userAnswers);
+        this.userScores.set(new UserExam(examID, userID), score);
         return score;
     }
 }
