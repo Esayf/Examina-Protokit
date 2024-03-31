@@ -1,0 +1,3 @@
+[submodule "apps/Examina-Backend-API"]
+	path = apps/Examina-Backend-API
+	url = https://github.com/Esayf/Examina-Backend-API.git
