@@ -7,4 +7,4 @@ appChain.configure({
   Runtime: runtime.config,
 });
 
-export const client = appChain;
+export const chain = appChain;
