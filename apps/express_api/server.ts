@@ -51,8 +51,8 @@ server.get("/create/mock_exam", async (req, res) => {
 server.get("/exams/:examID", async (req, res) => {
   const examina = client.runtime.resolve("Examina");
   const key = Field(req.params.examID);
-  const exam = await client.query.runtime.Examina.exams.get(key);
-  res.send("Exam: " + exam);
+  const exam: Exam120 | undefined = await client.query.runtime.Examina.exams.get(key);
+  res.send("Exam: " + exam?.questions.map((q) => q.correct_answer.toJSON() != "0" ? q.correct_answer.toJSON() : "").join(", "));
 });
 
 server.listen(3000, () => {
