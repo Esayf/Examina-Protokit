@@ -1,6 +1,6 @@
 import express, { Express, Request, Response } from "express";
 import { client } from "chain";
-import {Exam120,} from "chain/dist/Examina";
+import {AnswerID, Exam120, Question, Questions, UserAnswer, UserExam} from "chain/dist/Examina";
 import { Field, PrivateKey, UInt64 } from "o1js";
 const server = express();
 const serverKey = PrivateKey.random();
@@ -29,6 +29,21 @@ server.get("/", async (req, res) => {
   res.send("Hello World!");
 });
 
+server.post("/submit-user-answer", async (req, res) => {
+  const examina = client.runtime.resolve("Examina");
+  const examID = Field.from(req.body.examID);
+  const questionID = Field.from(req.body.questionID);
+  const userID = Field.from(req.body.userID);
+  const answerID = new AnswerID(examID, questionID, userID);
+  const userAnswer = new UserAnswer(Field.from(questionID), Field.from(req.body.userAnswer));
+  const tx = await client.transaction(serverPubKey, () => {
+    examina.submitUserAnswer(answerID, userAnswer);
+  });
+  tx.transaction = tx.transaction?.sign(serverKey);
+  await tx.send();
+  res.send("User answers submitted");
+});
+
 server.get("/create/mock_exam", async (req, res) => {
   try {
     const examina = client.runtime.resolve("Examina");
@@ -47,6 +62,50 @@ server.get("/create/mock_exam", async (req, res) => {
   }
   
 });
+
+
+server.get("/publis-correct-answers", async (req, res) => {
+  const examina = client.runtime.resolve("Examina");
+  const examID = Field.from(req.body.examID);
+  let questions: Questions;
+  questions = {
+    array: req.body.questions.map( (q: any) => {
+    return {
+      questionID: Field.from(q.questionID),
+      questionHash: Field.from(q.questionHash),
+      correct_answer: Field.from(q.correct_answer)
+    };
+  })};
+  const zeroQuestion = {
+    questionID: Field(0),
+    questionHash: Field(0),
+    correct_answer: Field(0),
+}
+for (let i = 0; i < 120 - req.body.questions.length; i++) {
+    questions.array.push(zeroQuestion);
+}
+  const tx = await client.transaction(serverPubKey, () => {
+    examina.publishExamCorrectAnswers(examID, questions);
+  });
+  tx.transaction = tx.transaction?.sign(serverKey);
+  await tx.send();
+  res.send("Correct answers published");
+});
+
+server.get("/check-score", async (req, res) => {
+  const examina = client.runtime.resolve("Examina");
+  const examID = Field.from(req.body.examID);
+  const userID = Field.from(req.body.userID);
+  const tx = await client.transaction(serverPubKey, () => {
+    examina.checkUserScore(userID, examID);
+  });
+  tx.transaction = tx.transaction?.sign(serverKey);
+  await tx.send();
+  const userScore = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID));
+  res.send("Score: " + userScore?.toJSON());
+});
+
+
 
 server.get("/exams/:examID", async (req, res) => {
   const examina = client.runtime.resolve("Examina");
