@@ -14,6 +14,10 @@
     "test": {},
     "start": {
       "cache": false
+    },
+    "start-server": {
+      "cache": false,
+      "persistent": true
     }
   }
 }

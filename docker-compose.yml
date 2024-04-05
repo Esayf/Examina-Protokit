@@ -1,0 +1,14 @@
+version: "3"
+services:
+  api_server:
+    build: .
+    ports:
+      - "3000:3000"
+      - "38080:8080"
+    restart: unless-stopped
+    networks: 
+      - examina_network
+networks:
+  examina_network:
+    external: true
+    driver: bridge

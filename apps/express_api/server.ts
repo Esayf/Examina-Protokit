@@ -26,7 +26,7 @@ const mockQuestions = [
 ];
 
 server.get("/", async (req, res) => {
-  res.send("Hello World!");
+  res.json("Hello World!");
 });
 
 server.post("/submit-user-answer", async (req, res) => {
@@ -41,7 +41,7 @@ server.post("/submit-user-answer", async (req, res) => {
   });
   tx.transaction = tx.transaction?.sign(serverKey);
   await tx.send();
-  res.send("User answers submitted");
+  res.json("User answers submitted");
 });
 
 server.get("/create/mock_exam", async (req, res) => {
@@ -55,10 +55,11 @@ server.get("/create/mock_exam", async (req, res) => {
   });
   tx.transaction = tx.transaction?.sign(serverKey);
   await tx.send();
+  console.log("Exam created");
   res.send("Exam created");
   } catch (error) {
     console.error(error);
-    res.send("Error creating exam");
+    res.json("Error creating exam");
   }
   
 });
@@ -89,7 +90,7 @@ for (let i = 0; i < 120 - req.body.questions.length; i++) {
   });
   tx.transaction = tx.transaction?.sign(serverKey);
   await tx.send();
-  res.send("Correct answers published");
+  res.json("Correct answers published");
 });
 
 server.get("/check-score", async (req, res) => {
@@ -102,7 +103,7 @@ server.get("/check-score", async (req, res) => {
   tx.transaction = tx.transaction?.sign(serverKey);
   await tx.send();
   const userScore = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID));
-  res.send("Score: " + userScore?.toJSON());
+  res.json("Score: " + userScore?.toJSON());
 });
 
 
@@ -111,7 +112,7 @@ server.get("/exams/:examID", async (req, res) => {
   const examina = client.runtime.resolve("Examina");
   const key = Field(req.params.examID);
   const exam: Exam120 | undefined = await client.query.runtime.Examina.exams.get(key);
-  res.send("Exam: " + exam?.questions.map((q) => q.correct_answer.toJSON() != "0" ? q.correct_answer.toJSON() : "").join(", "));
+  res.json("Exam: " + exam?.questions.map((q) => q.correct_answer.toJSON() != "0" ? q.correct_answer.toJSON() : "").join(", "));
 });
 
 server.listen(3000, () => {

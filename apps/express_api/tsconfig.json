@@ -15,6 +15,7 @@
       "strict": true,
       "alwaysStrict": true,
       "declarationMap": true,
-      "strictFunctionTypes": true
+      "strictFunctionTypes": true,
+      "skipLibCheck": true
     }
   }
