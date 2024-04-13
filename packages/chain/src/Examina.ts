@@ -84,7 +84,7 @@ export class Exam120 extends Struct({
         this.questions_count = questions_count;
         this.creator = creator;
         this.isActive = isActive;
-        for(let i = Number(questions_count.toBigInt()); i < 120; i++) {
+        for(let i = Number(questions_count.toBigInt); i < 120; i++) {
             questions[i] = new Question(Field.from(0), Field.from(0), Field.from(0));
         }
         this.questions = questions;

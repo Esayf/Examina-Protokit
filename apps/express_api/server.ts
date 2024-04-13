@@ -1,8 +1,9 @@
 import express, { Express, Request, Response } from "express";
 import { client } from "chain";
 import { AnswerID, Exam120, Question, Questions, UserAnswer, UserExam } from "chain/dist/Examina";
-import { CircuitString, Field, PrivateKey, UInt64 } from "o1js";
+import { CircuitString, Field, Poseidon, PrivateKey, UInt64 } from "o1js";
 const server = express();
+server.use(express.json());
 const serverKey = PrivateKey.random();
 const serverPubKey = serverKey.toPublicKey();
 await client.start();
@@ -67,16 +68,17 @@ server.get("/create/mock_exam", async (req, res) => {
 server.post("/create/exam", async (req, res) => {
   try {
     const examina = client.runtime.resolve("Examina");
-    const examID = Field.from(req.body.examID);
+    ;
+    const examID = Poseidon.hash([Field(Buffer.from(req.body.examID).toString("hex"))]);
     const questions = req.body.questions;
     const questionsAsStruct: Question[] = questions.map((q: any) => {
       return {
-        questionID: Field.from(q.questionID),
+        questionID: Poseidon.hash([Field(Buffer.from(q.questionID).toString("hex"))]),
         questionHash: CircuitString.fromString(q.question).hash(),
         correct_answer: Field.from(0)
       };
     })
-    const exam = new Exam120(questions.length, serverPubKey, UInt64.from(1), questionsAsStruct);
+    const exam = new Exam120(UInt64.from(questions.length), serverPubKey, UInt64.from(1), questionsAsStruct);
     const tx = await client.transaction(serverPubKey, () => {
       examina.createExam(examID, exam);
     });
@@ -90,15 +92,29 @@ server.post("/create/exam", async (req, res) => {
   }
 });
 
-server.get("/publish-correct-answers", async (req, res) => {
+server.post("/submit-user-answer", async (req, res) => {
   const examina = client.runtime.resolve("Examina");
-  const examID = Field.from(req.body.examID);
+  const examID = Poseidon.hash([Field(Buffer.from(req.body.examID).toString("hex"))]);
+  const questionID = Poseidon.hash([Field(Buffer.from(req.body.questionID).toString("hex"))]);
+  const userID = Poseidon.hash([Field(Buffer.from(req.body.userID).toString("hex"))]);
+  const answer = Field.from(req.body.userAnswer);
+  const tx = await client.transaction(serverPubKey, () => {
+    examina.submitUserAnswer(new AnswerID(examID, questionID, userID), new UserAnswer(questionID, answer));
+  });
+  tx.transaction = tx.transaction?.sign(serverKey);
+  await tx.send();
+  res.json("User answer submitted");
+});
+
+server.post("/publish-correct-answers", async (req, res) => {
+  const examina = client.runtime.resolve("Examina");
+  const examID = Poseidon.hash([Field(Buffer.from(req.body.examID).toString("hex"))]);
   let questions: Questions;
   questions = {
     array: req.body.questions.map((q: any) => {
       return {
-        questionID: Field.from(q.questionID),
-        questionHash: Field.from(q.questionHash),
+        questionID: Poseidon.hash([Field(Buffer.from(q.questionID).toString("hex"))]),
+        questionHash: CircuitString.fromString(q.question).hash(),
         correct_answer: Field.from(q.correct_answer)
       };
     })
@@ -119,7 +135,7 @@ server.get("/publish-correct-answers", async (req, res) => {
   res.json("Correct answers published");
 });
 
-server.get("/check-score", async (req, res) => {
+server.post("/check-score", async (req, res) => {
   const examina = client.runtime.resolve("Examina");
   const examID = Field.from(req.body.examID);
   const userID = Field.from(req.body.userID);
@@ -141,6 +157,6 @@ server.get("/exams/:examID", async (req, res) => {
   res.json("Exam: " + exam?.questions.map((q) => q.correct_answer.toJSON() != "0" ? q.correct_answer.toJSON() : "").join(", "));
 });
 
-server.listen(3000, () => {
-  console.log("Server is running on http://localhost:3000");
+server.listen(5000, () => {
+  console.log("Server is running on http://localhost:5000");
 });

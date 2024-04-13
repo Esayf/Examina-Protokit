@@ -3,7 +3,7 @@ services:
   api_server:
     build: .
     ports:
-      - "3000:3000"
+      - "5000:5000"
       - "38080:8080"
     restart: unless-stopped
     networks: 
