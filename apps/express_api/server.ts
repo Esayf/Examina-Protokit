@@ -75,7 +75,7 @@ server.post("/create/exam", async (req, res) => {
       return {
         questionID: Poseidon.hash([Field(Buffer.from(q.questionID).toString("hex"))]),
         questionHash: CircuitString.fromString(q.question).hash(),
-        correct_answer: Field.from(0)
+        correct_answer: Field.from(q.correct_answer)
       };
     })
     const exam = new Exam120(UInt64.from(questions.length), serverPubKey, UInt64.from(1), questionsAsStruct);
@@ -145,7 +145,7 @@ server.post("/check-score", async (req, res) => {
   tx.transaction = tx.transaction?.sign(serverKey);
   await tx.send();
   const userScore = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID));
-  res.json("Score: " + userScore?.toJSON());
+  res.json({score: userScore?.toJSON()});
 });
 
 

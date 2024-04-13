@@ -84,7 +84,7 @@ export class Exam120 extends Struct({
         this.questions_count = questions_count;
         this.creator = creator;
         this.isActive = isActive;
-        for(let i = Number(questions_count.toBigInt); i < 120; i++) {
+        for(let i = Number(questions_count.toBigInt()); i < 120; i++) {
             questions[i] = new Question(Field.from(0), Field.from(0), Field.from(0));
         }
         this.questions = questions;
@@ -129,17 +129,18 @@ export class Examina extends RuntimeModule<ExamConfig> {
 
     @runtimeMethod()
     public submitUserAnswer(answerID: AnswerID, answer: UserAnswer): void {
-        assert(this.exams.get(answerID.examID).value.isActive.equals(UInt64.from(1)), "Exam is not active");
+        const userExam = new UserExam(answerID.examID, answerID.userID);
+        assert(this.userScores.get(userExam).isSome, "User already completed the exam");
         this.answers.set(answerID, answer);
     }
 
-    @runtimeMethod()
+/*     @runtimeMethod()
     public publishExamCorrectAnswers(examID: Field, questions: Questions): void {
         const exam = this.exams.get(examID).value;
         exam.questions = questions.array;
-        exam.isActive = UInt64.from(2);
+        //exam.isActive = UInt64.from(2);
         this.exams.set(examID, exam);
-    }
+    } */
 
     public getUserAnswers(examID: Field, userID: Field): [Field[], Field[]] {
         const exam = this.exams.get(examID).value;
