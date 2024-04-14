@@ -109,6 +109,7 @@ describe("Examina", () => {
         await tx2.send();
         const block2 = await appChain.produceBlock();
         userAnswer = await appChain.query.runtime.Examina.answers.get(answerID);
+        console.log(block2);
         expect(block2?.transactions[0].status.toBoolean()).toBe(true);
         expect(userAnswer != undefined).toBe(true);
     }, 150_000);
