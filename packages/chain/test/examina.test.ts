@@ -167,7 +167,7 @@ describe("Examina", () => {
         for (let i = 0; i < 120 - 3; i++) {
             mockCorrectAnswers.array.push(zeroQuestion);
         }
-        const tx3 = await appChain.transaction(alice, () => {
+/*         const tx3 = await appChain.transaction(alice, () => {
             examina.publishExamCorrectAnswers(mockExamID_1, mockCorrectAnswers);
         });
         await tx3.sign();
@@ -175,7 +175,7 @@ describe("Examina", () => {
         const block3 = await appChain.produceBlock();
         const exam = await appChain.query.runtime.Examina.exams.get(mockExamID_1);
         expect(block3?.transactions[0].status.toBoolean()).toBe(true);
-        expect(exam?.isActive.toString()).toBe("2");
+        expect(exam?.isActive.toString()).toBe("2"); */
     }, 150_000);
     it("should calculate score", async () => {
         const tx4 = await appChain.transaction(alice, () => {

@@ -169,10 +169,9 @@ export class Examina extends RuntimeModule<ExamConfig> {
     }
 
     @runtimeMethod()
-    public checkUserScore(userID: Field, examID: Field): Field {
+    public checkUserScore(userID: Field, examID: Field): void {
         const [correctAnswers, userAnswers] = this.getUserAnswers(examID, userID);
         const score = this.calculateScore(correctAnswers, userAnswers);
         this.userScores.set(new UserExam(examID, userID), score);
-        return score;
     }
 }
