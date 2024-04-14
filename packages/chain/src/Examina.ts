@@ -93,12 +93,14 @@ export class Exam120 extends Struct({
 
 export class UserExam extends Struct({
     examID: Field,
-    userID: Field
+    userID: Field,
+    isCompleted: UInt64
 }) {
-    constructor(examID: Field, userID: Field) {
-        super({ examID, userID });
+    constructor(examID: Field, userID: Field, isCompleted: UInt64) {
+        super({ examID, userID, isCompleted });
         this.examID = examID;
         this.userID = userID;
+        this.isCompleted = isCompleted;
     }
 }
 export class AnswerID extends Struct({
@@ -122,6 +124,7 @@ export class Examina extends RuntimeModule<ExamConfig> {
     @state() public exams = StateMap.from<Field, Exam120>(Field, Exam120);
     @state() public answers = StateMap.from<AnswerID, UserAnswer>(AnswerID, UserAnswer);
     @state() public userScores = StateMap.from<UserExam, Field>(UserExam, Field);
+    @state() public userExams = StateMap.from<Field, UserExam>(Field, UserExam);
     @runtimeMethod()
     public createExam(examID: Field, exam: Exam120): void {
         this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, UInt64.from(1), exam.questions));
@@ -129,18 +132,24 @@ export class Examina extends RuntimeModule<ExamConfig> {
 
     @runtimeMethod()
     public submitUserAnswer(answerID: AnswerID, answer: UserAnswer): void {
-        const userExam = new UserExam(answerID.examID, answerID.userID);
-        assert(this.userScores.get(userExam).isSome, "User already completed the exam");
+        const userExam = Provable.if(
+            this.userExams.get(answerID.userID).value.isCompleted.equals(UInt64.from(0)), 
+            UserExam, 
+            this.userExams.get(answerID.userID).value, 
+            new UserExam(answerID.examID, answerID.userID, UInt64.from(2))
+        );
+        this.userExams.set(answerID.userID, userExam);
+        assert(userExam.isCompleted.equals(UInt64.from(1)).not(), "User already completed the exam");
         this.answers.set(answerID, answer);
     }
 
-/*     @runtimeMethod()
+    @runtimeMethod()
     public publishExamCorrectAnswers(examID: Field, questions: Questions): void {
         const exam = this.exams.get(examID).value;
         exam.questions = questions.array;
-        //exam.isActive = UInt64.from(2);
+        exam.isActive = UInt64.from(2);
         this.exams.set(examID, exam);
-    } */
+    }
 
     public getUserAnswers(examID: Field, userID: Field): [Field[], Field[]] {
         const exam = this.exams.get(examID).value;
@@ -159,7 +168,7 @@ export class Examina extends RuntimeModule<ExamConfig> {
         let scoreController = new ScoreController(Field(0), Field(0));
         for (let i = 0; i < correctAnswers.length; i++) {
             const newScore = Provable.if(
-            correctAnswers[i].equals(userAnswers[i]).and(correctAnswers[i].isConstant()), 
+            correctAnswers[i].equals(userAnswers[i]).and(correctAnswers[i].equals(Field(0)).not()), 
             ScoreController, 
             new ScoreController(scoreController.corrects.add(Field(1)), scoreController.incorrects) , 
             new ScoreController (scoreController.corrects, scoreController.incorrects.add(Field(1))));
@@ -172,6 +181,7 @@ export class Examina extends RuntimeModule<ExamConfig> {
     public checkUserScore(userID: Field, examID: Field): void {
         const [correctAnswers, userAnswers] = this.getUserAnswers(examID, userID);
         const score = this.calculateScore(correctAnswers, userAnswers);
-        this.userScores.set(new UserExam(examID, userID), score);
+        this.userScores.set(new UserExam(examID, userID, UInt64.from(1)), score);
+        this.userExams.set(userID, new UserExam(examID, userID, UInt64.from(1)));
     }
 }
