@@ -135,8 +135,8 @@ export class Examina extends RuntimeModule<ExamConfig> {
         const userExam = Provable.if(
             this.userExams.get(answerID.userID).value.isCompleted.equals(UInt64.from(0)), 
             UserExam, 
-            this.userExams.get(answerID.userID).value, 
-            new UserExam(answerID.examID, answerID.userID, UInt64.from(2))
+            new UserExam(answerID.examID, answerID.userID, UInt64.from(2)),
+            this.userExams.get(answerID.userID).value
         );
         this.userExams.set(answerID.userID, userExam);
         assert(userExam.isCompleted.equals(UInt64.from(1)).not(), "User already completed the exam");

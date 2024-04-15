@@ -171,16 +171,22 @@ server.post("/check-score", async (req, res) => {
   await tx.send();
   const userScore = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(1)));
   console.log("User score calculated: ", userScore?.toJSON());
-  res.send({ score: userScore?.toJSON() });
+  res.json({ score: userScore ? userScore.toJSON() : "User score not found"});
 });
 
 server.get("/score/:examID/:userID", async (req, res) => {
   const examina = client.runtime.resolve("Examina");
   const examID = Poseidon.hash([Field(Buffer.from(req.params.examID).toString("hex"))]);
   const userID = Poseidon.hash([Field(Buffer.from(req.params.userID).toString("hex"))]);
-  const score = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(1)));
-  console.log("Score: ", score?.toJSON());
-  res.send({ score: score?.toJSON() });
+  const score_1 = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(1)));
+  const score_0 = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(0)));
+  const score_2 = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(2)));
+
+
+  console.log("Score_1: ", score_1?.toJSON());
+  console.log("Score_0: ", score_0?.toJSON());
+  console.log("Score_2: ", score_2?.toJSON());
+  res.send({ score: score_1?.toJSON() });
 });
 
 server.get("/exams/:examID", async (req, res) => {
@@ -193,14 +199,15 @@ server.get("/exams/:examID", async (req, res) => {
     (q.correct_answer.toJSON()) : ""));
 });
 
+
 server.get("/answers/:examID/:questionID/:userID", async (req, res) => {
   const examina = client.runtime.resolve("Examina");
-  const examID = Poseidon.hash([Field(Buffer.from(req.params.examID).toString("hex"))]);
-  const questionID = Poseidon.hash([Field(Buffer.from(req.params.questionID).toString("hex"))]);
-  const userID = Poseidon.hash([Field(Buffer.from(req.params.userID).toString("hex"))]);
-  const answer = await client.query.runtime.Examina.answers.get(new AnswerID(examID, questionID, userID));
-  console.log("Answer: ", answer?.answer.toJSON());
-  res.json("Answer: " + answer?.answer.toJSON());
+  const key = Poseidon.hash([Field(Buffer.from(req.params.userID).toString("hex"))]);
+  const userExam: UserExam | undefined = await client.query.runtime.Examina.userExams.get(key);
+  console.log("UserExam isCompleted: ", userExam?.isCompleted.toJSON());
+  console.log("UserExam examID: ", userExam?.examID.toJSON());
+  console.log("UserExam userID: ", userExam?.userID.toJSON());
+  res.json("UserExam: " + userExam?.isCompleted.toJSON());
 });
 
 server.listen(5005, () => {
