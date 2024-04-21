@@ -30,21 +30,6 @@ server.get("/", async (req, res) => {
   res.json("Hello World!");
 });
 
-server.post("/submit-user-answer", async (req, res) => {
-  const examina = client.runtime.resolve("Examina");
-  const examID = Field.from(req.body.examID);
-  const questionID = Field.from(req.body.questionID);
-  const userID = Field.from(req.body.userID);
-  const answerID = new AnswerID(examID, questionID, userID);
-  const userAnswer = new UserAnswer(Field.from(questionID), Field.from(req.body.userAnswer));
-  const tx = await client.transaction(serverPubKey, () => {
-    examina.submitUserAnswer(answerID, userAnswer);
-  });
-  tx.transaction = tx.transaction?.sign(serverKey);
-  await tx.send();
-  res.json("User answers submitted");
-});
-
 server.get("/create/mock_exam", async (req, res) => {
   try {
     const examina = client.runtime.resolve("Examina");
@@ -157,6 +142,6 @@ server.get("/exams/:examID", async (req, res) => {
   res.json("Exam: " + exam?.questions.map((q) => q.correct_answer.toJSON() != "0" ? q.correct_answer.toJSON() : "").join(", "));
 });
 
-server.listen(5000, () => {
-  console.log("Server is running on http://localhost:5000");
+server.listen(5005, () => {
+  console.log("Server is running on http://localhost:5005");
 });
