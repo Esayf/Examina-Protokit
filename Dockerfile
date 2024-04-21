@@ -12,4 +12,5 @@ RUN corepack enable
 RUN corepack prepare pnpm@8.15.1 --activate
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+CMD ["pnpm", "build"]
 CMD ["pnpm", "dev"]
