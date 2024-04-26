@@ -199,8 +199,7 @@ server.get("/exams/:examID", async (req, res) => {
     (q.correct_answer.toJSON()) : ""));
 });
 
-
-server.get("/answers/:examID/:questionID/:userID", async (req, res) => {
+server.get("/user-exams/:examID/:userID", async (req, res) => {
   const examina = client.runtime.resolve("Examina");
   const key = Poseidon.hash([Field(Buffer.from(req.params.userID).toString("hex"))]);
   const userExam: UserExam | undefined = await client.query.runtime.Examina.userExams.get(key);
@@ -208,6 +207,33 @@ server.get("/answers/:examID/:questionID/:userID", async (req, res) => {
   console.log("UserExam examID: ", userExam?.examID.toJSON());
   console.log("UserExam userID: ", userExam?.userID.toJSON());
   res.json("UserExam: " + userExam?.isCompleted.toJSON());
+});
+
+server.get("/get_all_answers/:examID/:userID", async (req, res) => {
+  const examina = client.runtime.resolve("Examina");
+  const examID = Poseidon.hash([Field(Buffer.from(req.params.examID).toString("hex"))]);
+  const userID = Poseidon.hash([Field(Buffer.from(req.params.userID).toString("hex"))]);
+  const exam = await client.query.runtime.Examina.exams.get(examID);
+  let answers: string[] | undefined = [];
+  exam?.questions.map(async (q) => {
+    const answerID = new AnswerID(examID, q.questionID, userID);
+    const answer = await client.query.runtime.Examina.answers.get(answerID);
+    console.log("Answer: ", answer?.answer.toJSON());
+    answers.push(answer?.answer.toString() ? answer?.answer.toString() : "0");
+  });
+  console.log("Answers: ", answers);
+  res.json("Answers: " + answers);
+});
+
+
+server.get("/answers/:examID/:questionID/:userID", async (req, res) => {
+  const examina = client.runtime.resolve("Examina");
+  const examID = Poseidon.hash([Field(Buffer.from(req.params.examID).toString("hex"))]);
+  const questionID = Poseidon.hash([Field(Buffer.from(req.params.questionID).toString("hex"))]);
+  const userID = Poseidon.hash([Field(Buffer.from(req.params.userID).toString("hex"))]);
+  const answerID = new AnswerID(examID, questionID, userID);
+  const answer = await client.query.runtime.Examina.answers.get(answerID);
+  res.json("Answer: " + answer?.answer.toJSON());
 });
 
 server.listen(5005, () => {
