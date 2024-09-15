@@ -2,4 +2,3 @@ include:
   - ./persistence/docker-compose.yml
   - ./sequencer/docker-compose.yml
   - ./express_api/docker-compose.yml
-  - ./proxy/docker-compose.yml
