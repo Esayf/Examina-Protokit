@@ -84,9 +84,6 @@ export class Exam120 extends Struct({
         this.questions_count = questions_count;
         this.creator = creator;
         this.isActive = isActive;
-        for(let i = Number(questions_count.toBigInt()); i < 120; i++) {
-            questions[i] = new Question(Field.from(0), Field.from(0), Field.from(0));
-        }
         this.questions = questions;
     }
 }
@@ -155,11 +152,11 @@ export class Examina extends RuntimeModule<ExamConfig> {
         const exam = this.exams.get(examID).value;
         let userAnswers: Field[] = [];
         let correctAnswers: Field[] = [];
-        for (let i = 0; i < exam.questions_count.toBigInt(); i++) {
-            const answerID = new AnswerID(examID, exam.questions[i].questionID, userID);
-            const answer = this.answers.get(answerID).value;
+        for (const question of exam.questions) {
+            const answerID = new AnswerID(examID, question.questionID, userID);
+            const answer = Provable.if(this.answers.get(answerID).isSome, UserAnswer, this.answers.get(answerID).value, new UserAnswer(Field(0), Field(0)));
             userAnswers.push(answer.answer);
-            correctAnswers.push(exam.questions[i].correct_answer);
+            correctAnswers.push(question.correct_answer);
         }
         return [correctAnswers, userAnswers];
     }

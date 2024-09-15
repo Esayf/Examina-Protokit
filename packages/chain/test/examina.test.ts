@@ -151,6 +151,14 @@ describe("Examina", () => {
                 correct_answer: Field(0),
             }
         ]
+        const zeroQuestion = {
+            questionID: Field(0),
+            questionHash: Field(0),
+            correct_answer: Field(0),
+        }
+        for (let i = 0; i < 120 - 10; i++) {
+            mockQuestions.push(zeroQuestion);
+        }
 
         const mockExam: Exam120 = new Exam120(UInt64.from(10), alice, UInt64.from(1), mockQuestions);
 
