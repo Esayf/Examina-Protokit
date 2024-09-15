@@ -1,38 +1,32 @@
-# For regular deployment
+# Use the base image from docker/base/Dockerfile
 FROM node:18
 
-# For locally built and imported framework references
-# Make sure you build the base-image first
-# FROM protokit-base:latest
-
+# Set the working directory inside the container
 WORKDIR /app
 
+# Copy the package.json and pnpm configuration files
 COPY package.json .
 COPY pnpm-workspace.yaml .
-COPY pnpm-lock.yaml .
 COPY turbo.json .
-
 COPY ./packages/chain/package.json ./packages/chain/package.json
 COPY ./apps/express_api/package.json ./apps/express_api/package.json
 
+# Enable pnpm and install dependencies
 RUN corepack enable pnpm
 
 COPY ./tsconfig.json .
+COPY ./packages/tsconfig ./packages/tsconfig
 COPY ./packages/chain/tsconfig.json ./packages/chain/tsconfig.json
 COPY ./apps/express_api/tsconfig.json ./apps/express_api/tsconfig.json
+COPY ./packages/eslint-config-custom ./packages/eslint-config-custom
 
-RUN pnpm install --frozen-lockfile
 
-RUN apt update && apt install dos2unix && apt clean
+RUN pnpm install --no-frozen-lockfile
 
+# Copy the source code
+COPY ./apps/express_api ./apps/express_api
 COPY ./packages ./packages
 
-RUN pnpm prisma:generate --filter=chain
 RUN pnpm build --filter=chain
-
-COPY ./docker/base/entry.sh ./entry.sh
-RUN dos2unix ./entry.sh
-RUN chmod +x ./entry.sh
-
-# Migrate + execute
-ENTRYPOINT ["./entry.sh"]
+# Expose the port the app runs on
+EXPOSE 5005

@@ -1,0 +1,23 @@
+services:
+  express_api:
+    image: starterkit-express-api
+    build:
+      dockerfile: ./docker/express_api/Dockerfile
+      context: ../..
+    container_name: starterkit-express-api
+    command: sh -c "cd ./apps/express_api && npm run build-and-start"
+    profiles:
+      - express_api
+    depends_on:
+      - sequencer
+    networks:
+      - routing-net
+      - chain-net
+      - examina-network
+    ports:
+      - 5005:5005
+
+networks:
+  examina_network:
+    external: true
+    driver: bridge
