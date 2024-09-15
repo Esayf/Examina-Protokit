@@ -3,6 +3,3 @@ include:
   - ./sequencer/docker-compose.yml
   - ./express_api/docker-compose.yml
   - ./proxy/docker-compose.yml
-networks:
-  examina-network:
-    external: true

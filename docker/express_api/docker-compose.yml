@@ -13,7 +13,7 @@ services:
     networks:
       - routing-net
       - chain-net
-      - examina-network
+      - examina_network
     ports:
       - 5005:5005
 
