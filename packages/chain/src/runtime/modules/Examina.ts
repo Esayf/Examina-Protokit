@@ -122,42 +122,48 @@ export class Examina extends RuntimeModule<ExamConfig> {
     @state() public answers = StateMap.from<AnswerID, UserAnswer>(AnswerID, UserAnswer);
     @state() public userScores = StateMap.from<UserExam, Field>(UserExam, Field);
     @state() public userExams = StateMap.from<Field, UserExam>(Field, UserExam);
+
     @runtimeMethod()
-    public createExam(examID: Field, exam: Exam120): void {
-        this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, UInt64.from(1), exam.questions));
+    public async createExam(examID: Field, exam: Exam120): Promise<void> {
+        await this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, UInt64.from(1), exam.questions));
     }
 
     @runtimeMethod()
-    public submitUserAnswer(answerID: AnswerID, answer: UserAnswer): void {
+    public async submitUserAnswer(answerID: AnswerID, answer: UserAnswer): Promise<void> {
         const userExam = Provable.if(
-            this.userExams.get(answerID.userID).value.isCompleted.equals(UInt64.from(0)), 
+            (await this.userExams.get(answerID.userID)).value.isCompleted.equals(UInt64.from(0)), 
             UserExam, 
             new UserExam(answerID.examID, answerID.userID, UInt64.from(2)),
-            this.userExams.get(answerID.userID).value
+            (await this.userExams.get(answerID.userID)).value
         );
-        this.userExams.set(answerID.userID, userExam);
+        await this.userExams.set(answerID.userID, userExam);
         assert(userExam.isCompleted.equals(UInt64.from(1)).not(), "User already completed the exam");
-        this.answers.set(answerID, answer);
+        await this.answers.set(answerID, answer);
     }
 
     @runtimeMethod()
-    public publishExamCorrectAnswers(examID: Field, questions: Questions): void {
-        const exam = this.exams.get(examID).value;
+    public async publishExamCorrectAnswers(examID: Field, questions: Questions): Promise<void> {
+        const exam = (await this.exams.get(examID)).value;
         exam.questions = questions.array;
         exam.isActive = UInt64.from(2);
-        this.exams.set(examID, exam);
+        await this.exams.set(examID, exam);
     }
 
-    public getUserAnswers(examID: Field, userID: Field): [Field[], Field[]] {
-        const exam = this.exams.get(examID).value;
+    public async getUserAnswers(examID: Field, userID: Field): Promise<[Field[], Field[]]> {
+        const exam = (await this.exams.get(examID)).value;
         let userAnswers: Field[] = [];
         let correctAnswers: Field[] = [];
-        for (const question of exam.questions) {
+            for (const question of exam.questions) {
             const answerID = new AnswerID(examID, question.questionID, userID);
-            const answer = Provable.if(this.answers.get(answerID).isSome, UserAnswer, this.answers.get(answerID).value, new UserAnswer(Field(0), Field(0)));
+            const answer = Provable.if(
+                (await this.answers.get(answerID)).isSome, 
+                UserAnswer, (await this.answers.get(answerID)).value, 
+                new UserAnswer(Field(0), Field(0))
+            );
             userAnswers.push(answer.answer);
             correctAnswers.push(question.correct_answer);
-        }
+        };
+
         return [correctAnswers, userAnswers];
     }
 
@@ -175,10 +181,10 @@ export class Examina extends RuntimeModule<ExamConfig> {
     }
 
     @runtimeMethod()
-    public checkUserScore(userID: Field, examID: Field): void {
-        const [correctAnswers, userAnswers] = this.getUserAnswers(examID, userID);
+    public async checkUserScore(userID: Field, examID: Field): Promise<void> {
+        const [correctAnswers, userAnswers] = await this.getUserAnswers(examID, userID);
         const score = this.calculateScore(correctAnswers, userAnswers);
-        this.userScores.set(new UserExam(examID, userID, UInt64.from(1)), score);
-        this.userExams.set(userID, new UserExam(examID, userID, UInt64.from(1)));
+        await this.userScores.set(new UserExam(examID, userID, UInt64.from(1)), score);
+        await this.userExams.set(userID, new UserExam(examID, userID, UInt64.from(1)));
     }
 }

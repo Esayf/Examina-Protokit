@@ -1,22 +1,3 @@
-# Examina-Protokit
-Examina Protokit implementation for exams
-# Protokit: Starter kit
-
-Starter kit for developing privacy enabled application chains. (zkChains)
-
-The default example contains a simple zkChain with one runtime module - `src/Balances.ts`.
-Integration tests for the Balances module can be found in `src/Balances.test.ts`.
-
-**Quick start:**
-
-```zsh
-npx degit proto-kit/starter-kit#develop my-chain
-cd my-chain
-npm install
-npm run test:watch
-```
-
-# Turborepo starter
 # Protokit starter-kit
 
 This repository is a monorepo aimed at kickstarting application chain development using the Protokit framework.
@@ -30,17 +11,15 @@ The monorepo contains 1 package and 1 app:
 
 **Prerequisites:**
 
-- Node.js v18
-- pnpm
+- Node.js `v18` (we recommend using NVM)
+- pnpm `v9.8`
 - nvm
 
-> If you're on windows, please use Docker until we find a more suitable solution to running the `@proto-kit/cli`. 
-> Run the following command and then proceed to "Running the sequencer & UI":
->
-> `docker run -it --rm -p 3000:3000 -p 8080:8080 -v %cd%:/starter-kit -w /starter-kit gplane/pnpm:node18 bash`
+For running with persistance / deploying on a server
+- docker `>= 24.0`
+- docker-compose `>= 2.22.0`
 
-
-### Setup
+## Setup
 
 ```zsh
 git clone https://github.com/proto-kit/starter-kit my-chain
@@ -51,17 +30,40 @@ nvm use
 pnpm install
 ```
 
-### Running the sequencer & UI
+## Running
+
+### Environments
+
+The starter-kit offers different environments to run you appchain.
+You can use those environments to configure the mode of operation for your appchain depending on which stage of development you are in.
+
+The starter kit comes with a set of pre-configured environments:
+- `inmemory`: Runs everything in-memory without persisting the data. Useful for early stages of runtime development.
+- `development`: Runs the sequencer locally and persists all state in databases running in docker. 
+- `sovereign`: Runs your appchain fully in docker (except the UI) for testnet deployments without settlement.
+
+Every command you execute should follow this pattern:
+
+`pnpm env:<environment> <command>`
+
+This makes sure that everything is set correctly and our tooling knows which environment you want to use.
+
+### Running in-memory
 
 ```zsh
 # starts both UI and sequencer locally
-pnpm dev
+pnpm env:inmemory dev
 
 # starts UI only
-pnpm dev -- --filter web
+pnpm env:inmemory dev --filter web
 # starts sequencer only
-pnpm dev -- --filter chain
+pnpm env:inmemory dev --filter chain
 ```
+
+> Be aware, the dev command will automatically restart your application when your sources change. 
+> If you don't want that, you can alternatively use `pnpm run build` and `pnpm run start`
+
+Navigate to `localhost:3000` to see the example UI, or to `localhost:8080/graphql` to see the GQL interface of the locally running sequencer.
 
 ### Running tests
 ```zsh
@@ -69,84 +71,73 @@ pnpm dev -- --filter chain
 pnpm run test --filter=chain -- --watchAll
 ```
 
-Navigate to `localhost:3000` to see the example UI, or to `localhost:8080/graphql` to see the GQL interface of the locally running sequencer.
+### Running with persistence
 
-This is an official starter Turborepo.
+```zsh
+# start databases
+pnpm env:development docker:up -d
+# generate prisma client
+pnpm env:development prisma:generate
+# migrate database schema
+pnpm env:development prisma:migrate
 
-## Using this example
+# build & start sequencer, make sure to prisma:generate & migrate before
+pnpm build --filter=chain
+pnpm env:development start --filter=chain
 
-Run the following command:
+# Watch sequencer for local filesystem changes
+# Be aware: Flags like --prune won't work with 'dev'
+pnpm env:development dev --filter=chain
 
-```sh
-npx create-turbo@latest
+# Start the UI
+pnpm env:development dev --filter web
 ```
 
-## What's inside?
+### Deploying to a server
 
-This Turborepo includes the following packages/apps:
+When deploying to a server, you should push your code along with your forked starter-kit to some repository, 
+then clone it on your remote server and execute it.
 
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `ui`: a stub React component library shared by both `web` and `docs` applications
-- `eslint-config-custom`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `tsconfig`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-```
-cd my-turborepo
-pnpm build
+```zsh
+# start every component with docker
+pnpm env:sovereign docker:up -d
 ```
 
-### Develop
+UI will be accessible at `https://localhost` and GQL inspector will be available at `https://localhost/graphql`
 
-To develop all apps and packages, run the following command:
+#### Configuration
 
+Go to `docker/proxy/Caddyfile` and replace the `*` matcher with your domain.
 ```
-cd my-turborepo
-pnpm dev
-```
-
-### Remote Caching
-
-Turborepo can use a technique known as [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup), then enter the following commands:
-
-```
-cd my-turborepo
-npx turbo login
+yourdomain.com {
+    ...
+}
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+> HTTPS is handled automatically by Caddy, you can (learn more about automatic https here.)[https://caddyserver.com/docs/automatic-https]
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+In most cases, you will need to change the `NEXT_PUBLIC_PROTOKIT_GRAPHQL_URL` property in the `.env` file to the domain your graphql endpoint is running in.
+By default, the graphql endpoint is running on the same domain as your UI with the `/graphql` suffix.
 
-```
-npx turbo link
-```
+#### Running sovereign chain locally
 
-## Useful Links
+The caddy reverse-proxy automatically uses https for all connections, use this guide to remove certificate errors when accessing localhost sites
 
-Learn more about the power of Turborepo:
+<https://caddyserver.com/docs/running#local-https-with-docker>
 
-- [Tasks](https://turbo.build/repo/docs/core-concepts/monorepos/running-tasks)
-- [Caching](https://turbo.build/repo/docs/core-concepts/caching)
-- [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching)
-- [Filtering](https://turbo.build/repo/docs/core-concepts/monorepos/filtering)
-- [Configuration Options](https://turbo.build/repo/docs/reference/configuration)
-- [CLI Usage](https://turbo.build/repo/docs/reference/command-line-reference)
+## CLI Options
+
+- `logLevel`: Overrides the loglevel used. Also configurable via the `PROTOKIT_LOG_LEVEL` environment variable.
+- `pruneOnStartup`: If set, prunes the database before startup, so that your chain is starting from a clean, genesis state. Alias for environment variable `PROTOKIT_PRUNE_ON_STARTUP`
+
+In order to pass in those CLI option, add it at the end of your command like this
+
+`pnpm env:inmemory dev --filter chain -- --logLevel DEBUG --pruneOnStartup`
+
+### Building the framework from source
+
+1. Make sure the framework is located under ../framework from the starter-kit's location
+2. Adapt your starter-kit's package.json to use the file:// references to framework
+3. Go into the framework folder, and build a docker image containing the sources with `docker build -f ./packages/deployment/docker/development-base/Dockerfile -t protokit-base .`
+
+4. Comment out the first line of docker/base/Dockerfile to use protokit-base

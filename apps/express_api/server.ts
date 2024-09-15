@@ -1,6 +1,6 @@
 import express, { Express, Request, Response } from "express";
 import { client } from "chain";
-import { AnswerID, Exam120, Question, Questions, UserAnswer, UserExam } from "chain/dist/Examina";
+import { AnswerID, Exam120, Question, Questions, UserAnswer, UserExam } from "chain/dist/runtime/modules/Examina";
 import { CircuitString, Field, Poseidon, PrivateKey, UInt64 } from "o1js";
 const server = express();
 server.use(express.json());
@@ -36,8 +36,8 @@ server.get("/create/mock_exam", async (req, res) => {
     //const examID = Field.from(req.body.examID);
     //const questions = req.body.questions;
     const exam = new Exam120(UInt64.from(3), serverPubKey, UInt64.from(1), mockQuestions);
-    const tx = await client.transaction(serverPubKey, () => {
-      examina.createExam(Field.from("1"), exam);
+    const tx = await client.transaction(serverPubKey, async () => {
+      await examina.createExam(Field.from("1"), exam);
     });
     tx.transaction = tx.transaction?.sign(serverKey);
     await tx.send();
@@ -68,8 +68,8 @@ server.post("/create/exam", async (req, res) => {
       };
     })
     const exam = new Exam120(UInt64.from(questions.length), serverPubKey, UInt64.from(1), questionsAsStruct);
-    const tx = await client.transaction(serverPubKey, () => {
-      examina.createExam(examID, exam);
+    const tx = await client.transaction(serverPubKey, async () => {
+      await examina.createExam(examID, exam);
     });
     tx.transaction = tx.transaction?.sign(serverKey);
     await tx.send();
@@ -89,8 +89,8 @@ server.post("/submit-user-answer", async (req, res) => {
   const userID = Poseidon.hash([Field(Buffer.from(req.body.userID).toString("hex"))]);
   const answer = Field.from(req.body.userAnswer);
   try {
-    const tx = await client.transaction(serverPubKey, () => {
-      examina.submitUserAnswer(new AnswerID(examID, questionID, userID), new UserAnswer(questionID, answer));
+    const tx = await client.transaction(serverPubKey, async () => {
+      await examina.submitUserAnswer(new AnswerID(examID, questionID, userID), new UserAnswer(questionID, answer));
     });
     tx.transaction = tx.transaction?.sign(serverKey);
     tx.send().then(() => {
@@ -158,14 +158,14 @@ server.post("/check-score", async (req, res) => {
   for (let i = 0; i < 120 - req.body.questions.length; i++) {
     questions.array.push(zeroQuestion);
   }
-  const tx_1 = await client.transaction(serverPubKey, () => {
-    examina.publishExamCorrectAnswers(examID, questions);
+  const tx_1 = await client.transaction(serverPubKey, async () => {
+    await examina.publishExamCorrectAnswers(examID, questions);
   });
   tx_1.transaction = tx_1.transaction?.sign(serverKey);
   await tx_1.send();
   console.log("Correct answers published");
-  const tx = await client.transaction(serverPubKey, () => {
-    examina.checkUserScore(userID, examID);
+  const tx = await client.transaction(serverPubKey, async () => {
+    await examina.checkUserScore(userID, examID);
   });
   tx.transaction = tx.transaction?.sign(serverKey);
   await tx.send();

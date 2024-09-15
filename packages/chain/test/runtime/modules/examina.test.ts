@@ -1,16 +1,25 @@
 import { TestingAppChain } from "@proto-kit/sdk";
 import { CircuitString, Field, Poseidon, PrivateKey, PublicKey, UInt64 } from "o1js";
-import { AnswerID, Exam120, Examina, Question, Questions, UserAnswer, UserExam } from "../src/Examina";
+import { AnswerID, Exam120, Examina, Question, Questions, UserAnswer, UserExam } from "../../../src/runtime/modules/Examina";
 import { log } from "@proto-kit/common";
 log.setLevel("ERROR");
 
 describe("Examina", () => {
-
-    let appChain = TestingAppChain.fromRuntime({
-        modules: {
-            Examina,
+    const appChain = TestingAppChain.fromRuntime({
+        Examina
+      });
+  
+      appChain.configurePartial({
+        Runtime: {
+          Balances: {
+            totalSupply: UInt64.from(10000),
+          },
+          Examina: {
+            incorrectToCorrectRatio: Field(0),
+          },
         },
-    });
+      });
+
     let examina: Examina;
     let mockExamID_Buffer: Buffer;
     let mockExamID_1: Field;
@@ -62,13 +71,7 @@ describe("Examina", () => {
 
 
     beforeAll(async () => {
-        appChain.configurePartial({
-            Runtime: {
-                Examina: {
-                    incorrectToCorrectRatio: UInt64.from(3),
-                },
-            },
-        });
+
         alicePrivateKey = PrivateKey.random();
         alice = alicePrivateKey.toPublicKey();
         await appChain.start();
@@ -151,6 +154,7 @@ describe("Examina", () => {
                 correct_answer: Field(0),
             }
         ]
+
         const zeroQuestion = {
             questionID: Field(0),
             questionHash: Field(0),
@@ -163,8 +167,8 @@ describe("Examina", () => {
         const mockExam: Exam120 = new Exam120(UInt64.from(10), alice, UInt64.from(1), mockQuestions);
 
 
-        const tx1 = await appChain.transaction(alice, () => {
-            examina.createExam(mockExamID_1, mockExam);
+        const tx1 = await appChain.transaction(alice, async () => {
+            await examina.createExam(mockExamID_1, mockExam);
         });
 
         await tx1.sign();
@@ -187,8 +191,8 @@ describe("Examina", () => {
         mockUserID_1 = Poseidon.hash([Field(mockUserID_Buffer.toString("hex"))]);
         const mockAnswer = new UserAnswer(questionID, Field(2));
         answerID = new AnswerID(mockExamID_1, questionID, mockUserID_1);
-        const tx2 = await appChain.transaction(alice, () => {
-            examina.submitUserAnswer(answerID, mockAnswer);
+        const tx2 = await appChain.transaction(alice, async () => {
+            await examina.submitUserAnswer(answerID, mockAnswer);
         });
         await tx2.sign();
         await tx2.send();
@@ -210,8 +214,8 @@ describe("Examina", () => {
         const mockAnswer_10 = new UserAnswer(questionID_10, Field(1));
 
         answerID_2 = new AnswerID(mockExamID_1, questionID_2, mockUserID_1);
-        const tx2 = await appChain.transaction(alice, () => {
-            examina.submitUserAnswer(answerID_2, mockAnswer_2);
+        const tx2 = await appChain.transaction(alice, async () => {
+            await examina.submitUserAnswer(answerID_2, mockAnswer_2);
         });
         await tx2.sign();
         await tx2.send();
@@ -220,62 +224,62 @@ describe("Examina", () => {
         expect(block2?.transactions[0].status.toBoolean()).toBe(true);
         expect(userAnswer != undefined).toBe(true);
         const answerID_3: AnswerID = new AnswerID(mockExamID_1, questionID_3, mockUserID_1);
-        const tx3 = await appChain.transaction(alice, () => {
-            examina.submitUserAnswer(answerID_3, mockAnswer_3);
+        const tx3 = await appChain.transaction(alice, async () => {
+            await examina.submitUserAnswer(answerID_3, mockAnswer_3);
         });
         await tx3.sign();
         await tx3.send();
         const block3 = await appChain.produceBlock();
 
         const answerID_4: AnswerID = new AnswerID(mockExamID_1, questionID_4, mockUserID_1);
-        const tx4 = await appChain.transaction(alice, () => {
-            examina.submitUserAnswer(answerID_4, mockAnswer_4);
+        const tx4 = await appChain.transaction(alice, async () => {
+            await examina.submitUserAnswer(answerID_4, mockAnswer_4);
         });
         await tx4.sign();
         await tx4.send();
         const block4 = await appChain.produceBlock();
         const answerID_5: AnswerID = new AnswerID(mockExamID_1, questionID_5, mockUserID_1);
-        const tx5 = await appChain.transaction(alice, () => {
-            examina.submitUserAnswer(answerID_5, mockAnswer_5);
+        const tx5 = await appChain.transaction(alice, async () => {
+            await examina.submitUserAnswer(answerID_5, mockAnswer_5);
         });
         await tx5.sign();
         await tx5.send();
         const block5 = await appChain.produceBlock();
 
         const answerID_6: AnswerID = new AnswerID(mockExamID_1, questionID_6, mockUserID_1);
-        const tx6 = await appChain.transaction(alice, () => {
-            examina.submitUserAnswer(answerID_6, mockAnswer_6);
+        const tx6 = await appChain.transaction(alice, async () => {
+            await examina.submitUserAnswer(answerID_6, mockAnswer_6);
         });
         await tx6.sign();
         await tx6.send();
         const block6 = await appChain.produceBlock();
         const answerID_7: AnswerID = new AnswerID(mockExamID_1, questionID_7, mockUserID_1);
-        const tx7 = await appChain.transaction(alice, () => {
-            examina.submitUserAnswer(answerID_7, mockAnswer_7);
+        const tx7 = await appChain.transaction(alice, async () => {
+            await examina.submitUserAnswer(answerID_7, mockAnswer_7);
         });
         await tx7.sign();
         await tx7.send();
         const block7 = await appChain.produceBlock();
 
         const answerID_8: AnswerID = new AnswerID(mockExamID_1, questionID_8, mockUserID_1);
-        const tx8 = await appChain.transaction(alice, () => {
-            examina.submitUserAnswer(answerID_8, mockAnswer_8);
+        const tx8 = await appChain.transaction(alice, async () => {
+            await examina.submitUserAnswer(answerID_8, mockAnswer_8);
         });
         await tx8.sign();
         await tx8.send();
         const block8 = await appChain.produceBlock();
 
         const answerID_9: AnswerID = new AnswerID(mockExamID_1, questionID_9, mockUserID_1);
-        const tx9 = await appChain.transaction(alice, () => {
-            examina.submitUserAnswer(answerID_9, mockAnswer_9);
+        const tx9 = await appChain.transaction(alice, async () => {
+            await examina.submitUserAnswer(answerID_9, mockAnswer_9);
         });
         await tx9.sign();
         await tx9.send();
         const block9 = await appChain.produceBlock();
 
         const answerID_10: AnswerID = new AnswerID(mockExamID_1, questionID_10, mockUserID_1);
-        const tx10 = await appChain.transaction(alice, () => {
-            examina.submitUserAnswer(answerID_10, mockAnswer_10);
+        const tx10 = await appChain.transaction(alice, async () => {
+            await examina.submitUserAnswer(answerID_10, mockAnswer_10);
         });
         await tx10.sign();
         await tx10.send();
@@ -312,59 +316,61 @@ describe("Examina", () => {
         expect(userAnswer_5?.answer.toString()).toBe("4");
     }, 150_000);
     it("should publishExamCorrectAnswers", async () => {
-        
-        const mockCorrectAnswers: Questions = { array: [
-            {
-                questionID: Poseidon.hash([Field(mockQuestionID.toString("hex"))]),
-                questionHash: CircuitString.fromString("What is 1 + 1?").hash(),
-                correct_answer: Field(2),
-            },
-            {
-                questionID: Poseidon.hash([Field(mockQuestionID_2.toString("hex"))]),
-                questionHash: CircuitString.fromString("What is 2 + 2?").hash(),
-                correct_answer: Field(3),
-            },
-            {
-                questionID: Poseidon.hash([Field(mockQuestionID_3.toString("hex"))]),
-                questionHash: CircuitString.fromString("What is 3 + 3?").hash(),
-                correct_answer: Field(1),
-            },
-            {
-                questionID: Poseidon.hash([Field(mockQuestionID_4.toString("hex"))]),
-                questionHash: CircuitString.fromString("What is 4 + 4?").hash(),
-                correct_answer: Field(2),
-            },
-            {
-                questionID: Poseidon.hash([Field(mockQuestionID_5.toString("hex"))]),
-                questionHash: CircuitString.fromString("What is 5 + 5?").hash(),
-                correct_answer: Field(4),
-            },
-            {
-                questionID: Poseidon.hash([Field(mockQuestionID_6.toString("hex"))]),
-                questionHash: CircuitString.fromString("What is 6 + 6?").hash(),
-                correct_answer: Field(2),
-            },
-            {
-                questionID: Poseidon.hash([Field(mockQuestionID_7.toString("hex"))]),
-                questionHash: CircuitString.fromString("What is 7 + 7?").hash(),
-                correct_answer: Field(2),
-            },
-            {
-                questionID: Poseidon.hash([Field(mockQuestionID_8.toString("hex"))]),
-                questionHash: CircuitString.fromString("What is 8 + 8?").hash(),
-                correct_answer: Field(2),
-            },
-            {
-                questionID: Poseidon.hash([Field(mockQuestionID_9.toString("hex"))]),
-                questionHash: CircuitString.fromString("What is 9 + 9?").hash(),
-                correct_answer: Field(2),
-            },
-            {
-                questionID: Poseidon.hash([Field(mockQuestionID_10.toString("hex"))]),
-                questionHash: CircuitString.fromString("What is 10 + 10?").hash(),
-                correct_answer: Field(2),
-            }
-        ]};
+
+        const mockCorrectAnswers: Questions = {
+            array: [
+                {
+                    questionID: Poseidon.hash([Field(mockQuestionID.toString("hex"))]),
+                    questionHash: CircuitString.fromString("What is 1 + 1?").hash(),
+                    correct_answer: Field(2),
+                },
+                {
+                    questionID: Poseidon.hash([Field(mockQuestionID_2.toString("hex"))]),
+                    questionHash: CircuitString.fromString("What is 2 + 2?").hash(),
+                    correct_answer: Field(3),
+                },
+                {
+                    questionID: Poseidon.hash([Field(mockQuestionID_3.toString("hex"))]),
+                    questionHash: CircuitString.fromString("What is 3 + 3?").hash(),
+                    correct_answer: Field(1),
+                },
+                {
+                    questionID: Poseidon.hash([Field(mockQuestionID_4.toString("hex"))]),
+                    questionHash: CircuitString.fromString("What is 4 + 4?").hash(),
+                    correct_answer: Field(2),
+                },
+                {
+                    questionID: Poseidon.hash([Field(mockQuestionID_5.toString("hex"))]),
+                    questionHash: CircuitString.fromString("What is 5 + 5?").hash(),
+                    correct_answer: Field(4),
+                },
+                {
+                    questionID: Poseidon.hash([Field(mockQuestionID_6.toString("hex"))]),
+                    questionHash: CircuitString.fromString("What is 6 + 6?").hash(),
+                    correct_answer: Field(2),
+                },
+                {
+                    questionID: Poseidon.hash([Field(mockQuestionID_7.toString("hex"))]),
+                    questionHash: CircuitString.fromString("What is 7 + 7?").hash(),
+                    correct_answer: Field(2),
+                },
+                {
+                    questionID: Poseidon.hash([Field(mockQuestionID_8.toString("hex"))]),
+                    questionHash: CircuitString.fromString("What is 8 + 8?").hash(),
+                    correct_answer: Field(2),
+                },
+                {
+                    questionID: Poseidon.hash([Field(mockQuestionID_9.toString("hex"))]),
+                    questionHash: CircuitString.fromString("What is 9 + 9?").hash(),
+                    correct_answer: Field(2),
+                },
+                {
+                    questionID: Poseidon.hash([Field(mockQuestionID_10.toString("hex"))]),
+                    questionHash: CircuitString.fromString("What is 10 + 10?").hash(),
+                    correct_answer: Field(2),
+                }
+            ]
+        };
         const zeroQuestion = {
             questionID: Field(0),
             questionHash: Field(0),
@@ -373,8 +379,8 @@ describe("Examina", () => {
         for (let i = 0; i < 120 - 10; i++) {
             mockCorrectAnswers.array.push(zeroQuestion);
         }
-        const tx3 = await appChain.transaction(alice, () => {
-            examina.publishExamCorrectAnswers(mockExamID_1, mockCorrectAnswers);
+        const tx3 = await appChain.transaction(alice, async () => {
+            await examina.publishExamCorrectAnswers(mockExamID_1, mockCorrectAnswers);
         });
         await tx3.sign();
         await tx3.send();
@@ -384,8 +390,8 @@ describe("Examina", () => {
         expect(exam?.isActive.toString()).toBe("2");
     }, 150_000);
     it("should calculate score", async () => {
-        const tx4 = await appChain.transaction(alice, () => {
-            examina.checkUserScore(mockUserID_1, mockExamID_1);
+        const tx4 = await appChain.transaction(alice, async () => {
+            await examina.checkUserScore(mockUserID_1, mockExamID_1);
         });
         await tx4.sign();
         await tx4.send();
