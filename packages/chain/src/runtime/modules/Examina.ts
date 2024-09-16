@@ -142,35 +142,23 @@ export class Examina extends RuntimeModule<ExamConfig> {
     @state() public exams = StateMap.from<Field, Exam120>(Field, Exam120);
     @state() public answers = StateMap.from<AnswerID, UserAnswer>(AnswerID, UserAnswer);
     @state() public userScores = StateMap.from<UserExam, Field>(UserExam, Field);
-    @state() public userExams = StateMap.from<Field, UserExam>(Field, UserExam);
 
     @runtimeMethod()
     public async createExam(examID: Field, exam: Exam120): Promise<void> {
         await this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, UInt64.from(1), exam.questions));
     }
 
+    // Deprecated, will be removed after the backend update
     @runtimeMethod()
     public async submitUserAnswer(answerID: AnswerID, answer: UserAnswer): Promise<void> {
-        const userExam = Provable.if(
-            (await this.userExams.get(answerID.userID)).orElse(new UserExam(answerID.examID, answerID.userID, UInt64.from(2))).isCompleted.equals(UInt64.from(0)), 
-            UserExam, 
-            new UserExam(answerID.examID, answerID.userID, UInt64.from(2)),
-            (await this.userExams.get(answerID.userID)).value
-        );
-        await this.userExams.set(answerID.userID, userExam);
-        assert(userExam.isCompleted.equals(UInt64.from(1)).not(), "User already completed the exam");
         await this.answers.set(answerID, answer);
     }
 
     public async submitUserAnswerInternal(answerID: AnswerID, answer: UserAnswer): Promise<void> {
-        const userExam = Provable.if(
-            (await this.userExams.get(answerID.userID)).orElse(new UserExam(answerID.examID, answerID.userID, UInt64.from(2))).isCompleted.equals(UInt64.from(0)), 
-            UserExam, 
-            new UserExam(answerID.examID, answerID.userID, UInt64.from(2)),
-            (await this.userExams.get(answerID.userID)).value
-        );
-        await this.userExams.set(answerID.userID, userExam);
-        assert(userExam.isCompleted.equals(UInt64.from(1)).not(), "User already completed the exam");
+
+        const exam = (await this.exams.get(answerID.examID));
+        assert(exam.isSome, "Exam not found");
+        assert(exam.value.isActive.equals(UInt64.from(1)), "Exam is not active");
         await this.answers.set(answerID, answer);
     }
 
@@ -226,6 +214,5 @@ export class Examina extends RuntimeModule<ExamConfig> {
         const [correctAnswers, userAnswers] = await this.getUserAnswers(examID, userID);
         const score = this.calculateScore(correctAnswers, userAnswers);
         await this.userScores.set(new UserExam(examID, userID, UInt64.from(1)), score);
-        await this.userExams.set(userID, new UserExam(examID, userID, UInt64.from(1)));
     }
 }

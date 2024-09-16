@@ -244,16 +244,6 @@ server.get("/exams/:examID", async (req, res) => {
     (q.correct_answer.toJSON()) : ""));
 });
 
-server.get("/user-exams/:examID/:userID", async (req, res) => {
-  const examina = client.runtime.resolve("Examina");
-  const key = Poseidon.hash([Field(Buffer.from(req.params.userID).toString("hex"))]);
-  const userExam: UserExam | undefined = await client.query.runtime.Examina.userExams.get(key);
-  console.log("UserExam isCompleted: ", userExam?.isCompleted.toJSON());
-  console.log("UserExam examID: ", userExam?.examID.toJSON());
-  console.log("UserExam userID: ", userExam?.userID.toJSON());
-  res.json("UserExam: " + userExam?.isCompleted.toJSON());
-});
-
 server.get("/get_all_answers/:examID/:userID", async (req, res) => {
   const examina = client.runtime.resolve("Examina");
   const examID = Poseidon.hash([Field(Buffer.from(req.params.examID).toString("hex"))]);
