@@ -1,6 +1,6 @@
 import express, { Express, Request, Response } from "express";
 import { client } from "chain";
-import { AnswerID, Exam120, Question, Questions, UserAnswer, UserExam } from "chain/dist/runtime/modules/Examina";
+import { AnswerID, Exam120, Question, Questions, UserAnswer, UserAnswerInput, UserAnswersInput, UserExam } from "chain/dist/runtime/modules/Examina";
 import { CircuitString, Field, Poseidon, PrivateKey, UInt64 } from "o1js";
 const server = express();
 server.use(express.json());
@@ -8,21 +8,21 @@ const serverKey = PrivateKey.random();
 const serverPubKey = serverKey.toPublicKey();
 await client.start();
 
-const mockQuestions = [
+const mockQuestions: Question[] = [
   {
-    questionID: Field.from(1),
-    questionHash: Field.from(1),
-    correct_answer: Field.from(1),
+    questionID:  Poseidon.hash([Field(Buffer.from("1").toString("hex"))]),
+    questionHash: Poseidon.hash([Field(Buffer.from("1").toString("hex"))]),
+    correct_answer: Poseidon.hash([Field(Buffer.from("1").toString("hex"))]),
   },
   {
-    questionID: Field.from(2),
-    questionHash: Field.from(2),
-    correct_answer: Field.from(2),
+    questionID: Poseidon.hash([Field(Buffer.from("2").toString("hex"))]),
+    questionHash: Poseidon.hash([Field(Buffer.from("2").toString("hex"))]),
+    correct_answer: Poseidon.hash([Field(Buffer.from("2").toString("hex"))]),
   },
   {
-    questionID: Field.from(3),
-    questionHash: Field.from(3),
-    correct_answer: Field.from(3),
+    questionID: Poseidon.hash([Field(Buffer.from("3").toString("hex"))]),
+    questionHash: Poseidon.hash([Field(Buffer.from("3").toString("hex"))]),
+    correct_answer: Poseidon.hash([Field(Buffer.from("3").toString("hex"))]),
   },
 ];
 
@@ -35,9 +35,17 @@ server.get("/create/mock_exam", async (req, res) => {
     const examina = client.runtime.resolve("Examina");
     //const examID = Field.from(req.body.examID);
     //const questions = req.body.questions;
+    const questionsLength = mockQuestions.length
+    for(let i = 0; i < 120 - questionsLength; i++) {
+      mockQuestions.push({
+        questionID: Field.from(i + questionsLength + 1),
+        questionHash: Field.from(i + questionsLength + 1),
+        correct_answer: Field.from(i + questionsLength + 1),
+      });
+    }
     const exam = new Exam120(UInt64.from(3), serverPubKey, UInt64.from(1), mockQuestions);
     const tx = await client.transaction(serverPubKey, async () => {
-      await examina.createExam(Field.from("1"), exam);
+      await examina.createExam(Field(Buffer.from("1").toString("hex")), exam);
     });
     tx.transaction = tx.transaction?.sign(serverKey);
     await tx.send();
@@ -67,6 +75,13 @@ server.post("/create/exam", async (req, res) => {
         correct_answer: Field.from(q.correct_answer)
       };
     })
+    for (let i = 0; i < 120 - questions.length; i++) {
+      questionsAsStruct.push({
+        questionID: Field.from(i + questions.length + 1),
+        questionHash: Field.from(i + questions.length + 1),
+        correct_answer: Field.from(i + questions.length + 1),
+      });
+    }
     const exam = new Exam120(UInt64.from(questions.length), serverPubKey, UInt64.from(1), questionsAsStruct);
     const tx = await client.transaction(serverPubKey, async () => {
       await examina.createExam(examID, exam);
@@ -104,8 +119,38 @@ server.post("/submit-user-answer", async (req, res) => {
     console.log("An error here from submit answer protokit:", error);
     res.status(500).send("Error submitting user answer");
   }
-
 });
+
+server.post("/submit-user-answers", async (req, res) => {
+  console.log("Submit user answers: ", req.body);
+  const examina = client.runtime.resolve("Examina");
+  const examID = Poseidon.hash([Field(Buffer.from(req.body.examID).toString("hex"))]);
+  const userID = Poseidon.hash([Field(Buffer.from(req.body.userID).toString("hex"))]);
+  let answers: UserAnswersInput = {
+    answers: req.body.answers.map((a: any) => {
+      return {
+        answerID: new AnswerID(examID, Poseidon.hash([Field(Buffer.from(a.questionID).toString("hex"))]), userID),
+        answer: new UserAnswer(Poseidon.hash([Field(Buffer.from(a.questionID).toString("hex"))]), Field.from(a.answer))
+      };
+    })
+  };
+  const zeroAnswer: UserAnswerInput = { answerID: new AnswerID(Field(0), Field(0), Field(0)), answer: new UserAnswer(Field(0), Field(0) )};
+  for (let i = 0; i < 120 - req.body.answers.length; i++) {
+    answers.answers.push(zeroAnswer);
+  }
+  const tx = await client.transaction(serverPubKey, async () => {
+    await examina.submitUserAnswers(answers);
+  });
+  tx.transaction = tx.transaction?.sign(serverKey);
+  tx.send().then(() => {
+    console.log("User answers submitted");
+    res.send("User answers submitted");
+  }).catch((error) => {
+    console.log("Error submitting user answers: ", error);
+    res.status(500).send("Error submitting user answers");
+  });
+});
+
 
 /* server.post("/publish-correct-answers", async (req, res) => {
   const examina = client.runtime.resolve("Examina");

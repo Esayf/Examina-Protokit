@@ -202,6 +202,103 @@ describe("Examina", () => {
         expect(block2?.transactions[0].status.toBoolean()).toBe(true);
         expect(userAnswer != undefined).toBe(true);
     }, 150_000);
+    it("should submit answers as one transaction submitUserAnswers", async () => {
+        const mockAnswer = new UserAnswer(questionID, Field(2));
+        const mockAnswer_2 = new UserAnswer(questionID_2, Field(3));
+        const mockAnswer_3 = new UserAnswer(questionID_3, Field(1));
+        const mockAnswer_4 = new UserAnswer(questionID_4, Field(2));
+        const mockAnswer_5 = new UserAnswer(questionID_5, Field(4));
+        const mockAnswer_6 = new UserAnswer(questionID_6, Field(2));
+        const mockAnswer_7 = new UserAnswer(questionID_7, Field(2));
+        const mockAnswer_8 = new UserAnswer(questionID_8, Field(2));
+        const mockAnswer_9 = new UserAnswer(questionID_9, Field(2));
+        const mockAnswer_10 = new UserAnswer(questionID_10, Field(1));
+        const answers = [
+            {
+                answerID: new AnswerID(mockExamID_1, questionID, mockUserID_1),
+                answer: mockAnswer
+            },
+            {
+                answerID: new AnswerID(mockExamID_1, questionID_2, mockUserID_1),
+                answer: mockAnswer_2
+            },
+            {
+                answerID: new AnswerID(mockExamID_1, questionID_3, mockUserID_1),
+                answer: mockAnswer_3
+            },
+            {
+                answerID: new AnswerID(mockExamID_1, questionID_4, mockUserID_1),
+                answer: mockAnswer_4
+            },
+            {
+                answerID: new AnswerID(mockExamID_1, questionID_5, mockUserID_1),
+                answer: mockAnswer_5
+            },
+            {
+                answerID: new AnswerID(mockExamID_1, questionID_6, mockUserID_1),
+                answer: mockAnswer_6
+            },
+            {
+                answerID: new AnswerID(mockExamID_1, questionID_7, mockUserID_1),
+                answer: mockAnswer_7
+            },
+            {
+                answerID: new AnswerID(mockExamID_1, questionID_8, mockUserID_1),
+                answer: mockAnswer_8
+            },
+            {
+                answerID: new AnswerID(mockExamID_1, questionID_9, mockUserID_1),
+                answer: mockAnswer_9
+            },
+            {
+                answerID: new AnswerID(mockExamID_1, questionID_10, mockUserID_1),
+                answer: mockAnswer_10
+            }
+        ]
+        for(let i = 0; i < 120 - 10; i++) {
+            answers.push({
+                answerID: new AnswerID(mockExamID_1, Field(0), mockUserID_1),
+                answer: new UserAnswer(Field(0), Field(0))
+            })
+        }
+        const answersInput = { answers: answers };
+        const tx3 = await appChain.transaction(alice, async () => {
+            await examina.submitUserAnswers(answersInput);
+        });
+        await tx3.sign();
+        await tx3.send();
+        const block3 = await appChain.produceBlock();
+        console.log("Block3: ", block3);
+        const userAnswer_2 = await appChain.query.runtime.Examina.answers.get(new AnswerID(mockExamID_1, questionID_2, mockUserID_1));
+        const userAnswer_3 = await appChain.query.runtime.Examina.answers.get(new AnswerID(mockExamID_1, questionID_3, mockUserID_1));
+        const userAnswer_4 = await appChain.query.runtime.Examina.answers.get(new AnswerID(mockExamID_1, questionID_4, mockUserID_1));
+        const userAnswer_5 = await appChain.query.runtime.Examina.answers.get(new AnswerID(mockExamID_1, questionID_5, mockUserID_1));
+        const userAnswer_6 = await appChain.query.runtime.Examina.answers.get(new AnswerID(mockExamID_1, questionID_6, mockUserID_1));
+        const userAnswer_7 = await appChain.query.runtime.Examina.answers.get(new AnswerID(mockExamID_1, questionID_7, mockUserID_1));
+        const userAnswer_8 = await appChain.query.runtime.Examina.answers.get(new AnswerID(mockExamID_1, questionID_8, mockUserID_1));
+        const userAnswer_9 = await appChain.query.runtime.Examina.answers.get(new AnswerID(mockExamID_1, questionID_9, mockUserID_1));
+        const userAnswer_10 = await appChain.query.runtime.Examina.answers.get(new AnswerID(mockExamID_1, questionID_10, mockUserID_1));
+        expect(block3?.transactions[0].status.toBoolean()).toBe(true);
+        expect(userAnswer_2 != undefined).toBe(true);
+        expect(userAnswer_3 != undefined).toBe(true);
+        expect(userAnswer_4 != undefined).toBe(true);
+        expect(userAnswer_5 != undefined).toBe(true);
+        expect(userAnswer_6 != undefined).toBe(true);
+        expect(userAnswer_7 != undefined).toBe(true);
+        expect(userAnswer_8 != undefined).toBe(true);
+        expect(userAnswer_9 != undefined).toBe(true);
+        expect(userAnswer_10 != undefined).toBe(true);
+        expect(userAnswer_2?.answer.toString()).toBe("3");
+        expect(userAnswer_3?.answer.toString()).toBe("1");
+        expect(userAnswer_4?.answer.toString()).toBe("2");
+        expect(userAnswer_5?.answer.toString()).toBe("4");
+        expect(userAnswer_6?.answer.toString()).toBe("2");
+        expect(userAnswer_7?.answer.toString()).toBe("2");
+        expect(userAnswer_8?.answer.toString()).toBe("2");
+        expect(userAnswer_9?.answer.toString()).toBe("2");
+        expect(userAnswer_10?.answer.toString()).toBe("1");
+
+    }, 150_000);
     it("should get user answers", async () => {
         const mockAnswer_2 = new UserAnswer(questionID_2, Field(3));
         const mockAnswer_3 = new UserAnswer(questionID_3, Field(1));

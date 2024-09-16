@@ -117,6 +117,26 @@ export class AnswerID extends Struct({
         return Poseidon.hash([this.examID, this.questionID, this.userID]);
     }
 }
+
+export class UserAnswerInput extends Struct({
+    answerID: AnswerID,
+    answer: UserAnswer,
+}) {
+    constructor(answerID: AnswerID, answer: UserAnswer) {
+        super({ answerID, answer });
+        this.answer = answer;
+        this.answerID = answerID;
+    }
+}
+
+export class UserAnswersInput extends Struct({
+    answers: Provable.Array(UserAnswerInput, 120),
+}) {
+    constructor(answers: UserAnswerInput[]) {
+        super({ answers });
+        this.answers = answers;
+    }
+}
 @runtimeModule()
 export class Examina extends RuntimeModule<ExamConfig> {
     @state() public exams = StateMap.from<Field, Exam120>(Field, Exam120);
@@ -142,6 +162,24 @@ export class Examina extends RuntimeModule<ExamConfig> {
         await this.answers.set(answerID, answer);
     }
 
+    public async submitUserAnswerInternal(answerID: AnswerID, answer: UserAnswer): Promise<void> {
+        const userExam = Provable.if(
+            (await this.userExams.get(answerID.userID)).orElse(new UserExam(answerID.examID, answerID.userID, UInt64.from(2))).isCompleted.equals(UInt64.from(0)), 
+            UserExam, 
+            new UserExam(answerID.examID, answerID.userID, UInt64.from(2)),
+            (await this.userExams.get(answerID.userID)).value
+        );
+        await this.userExams.set(answerID.userID, userExam);
+        assert(userExam.isCompleted.equals(UInt64.from(1)).not(), "User already completed the exam");
+        await this.answers.set(answerID, answer);
+    }
+
+    @runtimeMethod()
+    public async submitUserAnswers(answersInput: UserAnswersInput): Promise<void> {
+        for(const answer of answersInput.answers) {
+            await this.submitUserAnswerInternal(answer.answerID, answer.answer);
+        }
+    }
     @runtimeMethod()
     public async publishExamCorrectAnswers(examID: Field, questions: Questions): Promise<void> {
         assert((await this.exams.get(examID)).isSome.equals(Bool(true)), "Exam is not available");
