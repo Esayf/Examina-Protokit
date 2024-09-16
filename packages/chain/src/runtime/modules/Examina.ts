@@ -11,7 +11,8 @@ import {
     PublicKey,
     Struct,
     UInt64,
-    Poseidon
+    Poseidon,
+    Bool
 } from "o1js";
 
 interface ExamConfig { 
@@ -131,7 +132,7 @@ export class Examina extends RuntimeModule<ExamConfig> {
     @runtimeMethod()
     public async submitUserAnswer(answerID: AnswerID, answer: UserAnswer): Promise<void> {
         const userExam = Provable.if(
-            (await this.userExams.get(answerID.userID)).value.isCompleted.equals(UInt64.from(0)), 
+            (await this.userExams.get(answerID.userID)).orElse(new UserExam(answerID.examID, answerID.userID, UInt64.from(2))).isCompleted.equals(UInt64.from(0)), 
             UserExam, 
             new UserExam(answerID.examID, answerID.userID, UInt64.from(2)),
             (await this.userExams.get(answerID.userID)).value
@@ -143,6 +144,8 @@ export class Examina extends RuntimeModule<ExamConfig> {
 
     @runtimeMethod()
     public async publishExamCorrectAnswers(examID: Field, questions: Questions): Promise<void> {
+        assert((await this.exams.get(examID)).isSome.equals(Bool(true)), "Exam is not available");
+        assert((await this.exams.get(examID)).value.isActive.equals(UInt64.from(1)), "Exam is not active");
         const exam = (await this.exams.get(examID)).value;
         exam.questions = questions.array;
         exam.isActive = UInt64.from(2);
