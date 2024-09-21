@@ -152,39 +152,9 @@ server.post("/submit-user-answers", async (req, res) => {
 });
 
 
-/* server.post("/publish-correct-answers", async (req, res) => {
+server.post("/publish-correct-answers", async (req, res) => {
   const examina = client.runtime.resolve("Examina");
   const examID = Poseidon.hash([Field(Buffer.from(req.body.examID).toString("hex"))]);
-  let questions: Questions;
-  questions = {
-    array: req.body.questions.map((q: any) => {
-      return {
-        questionID: Poseidon.hash([Field(Buffer.from(q.questionID).toString("hex"))]),
-        questionHash: CircuitString.fromString(q.question).hash(),
-        correct_answer: Field.from(q.correct_answer)
-      };
-    })
-  };
-  const zeroQuestion = {
-    questionID: Field(0),
-    questionHash: Field(0),
-    correct_answer: Field(0),
-  }
-  for (let i = 0; i < 120 - req.body.questions.length; i++) {
-    questions.array.push(zeroQuestion);
-  }
-  const tx = await client.transaction(serverPubKey, () => {
-    examina.publishExamCorrectAnswers(examID, questions);
-  });
-  tx.transaction = tx.transaction?.sign(serverKey);
-  await tx.send();
-  res.json("Correct answers published");
-}); */
-
-server.post("/check-score", async (req, res) => {
-  const examina = client.runtime.resolve("Examina");
-  const examID = Poseidon.hash([Field(Buffer.from(req.body.examID).toString("hex"))]);
-  const userID = Poseidon.hash([Field(Buffer.from(req.body.userID).toString("hex"))]);
   let questions: Questions;
   questions = {
     array: req.body.questions.map((q: any) => {
@@ -209,14 +179,22 @@ server.post("/check-score", async (req, res) => {
   tx_1.transaction = tx_1.transaction?.sign(serverKey);
   await tx_1.send();
   console.log("Correct answers published");
+});
+
+server.post("/check-score", async (req, res) => {
+  const examina = client.runtime.resolve("Examina");
+  const examID = Poseidon.hash([Field(Buffer.from(req.body.examID).toString("hex"))]);
+  const userID = Poseidon.hash([Field(Buffer.from(req.body.userID).toString("hex"))]);
   const tx = await client.transaction(serverPubKey, async () => {
     await examina.checkUserScore(userID, examID);
   });
   tx.transaction = tx.transaction?.sign(serverKey);
   await tx.send();
-  const userScore = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(1)));
-  console.log("User score calculated: ", userScore?.toJSON());
-  res.json({ score: userScore ? userScore.toJSON() : "User score not found"});
+  setTimeout(async () => {
+    const userScore = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(1)));
+    console.log("User score calculated: ", userScore?.toJSON());
+    res.json({ score: userScore ? userScore.toJSON() : "User score not found"});
+  }, 1000);
 });
 
 server.get("/score/:examID/:userID", async (req, res) => {
