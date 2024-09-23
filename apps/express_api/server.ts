@@ -140,7 +140,7 @@ server.post("/submit-user-answers", async (req, res) => {
       };
     })
   };
-  const zeroAnswer: UserAnswerInput = { answerID: new AnswerID(Field(0), Field(0), Field(0)), answer: new UserAnswer(Field(0), Field(0) )};
+  const zeroAnswer: UserAnswerInput = { answerID: new AnswerID(examID, Field(0), userID), answer: new UserAnswer(Field(0), Field(0) )};
   for (let i = 0; i < 120 - req.body.answers.length; i++) {
     answers.answers.push(zeroAnswer);
   }
