@@ -169,7 +169,7 @@ export class Examina extends RuntimeModule<ExamConfig> {
     public async publishExamCorrectAnswers(examID: Field, questions: Questions): Promise<void> {
         assert((await this.exams.get(examID)).isSome.equals(Bool(true)), "Exam is not available");
         assert((await this.exams.get(examID)).value.isActive.equals(UInt64.from(1)), "Exam is not active");
-        const exam = (await this.exams.get(examID)).value;
+        let exam = (await this.exams.get(examID)).value;
         exam.questions = questions.array;
         exam.isActive = UInt64.from(2);
         await this.exams.set(examID, exam);

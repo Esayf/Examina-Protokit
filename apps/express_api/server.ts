@@ -198,8 +198,13 @@ server.post("/check-score", async (req, res) => {
   await tx.send();
   setTimeout(async () => {
     const userScore = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(1)));
+    const userScore0 = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(0)));
+    const userScore2 = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(2)));
+
     console.log("User score calculated: ", userScore?.toJSON());
-    res.json({ score: userScore ? userScore.toJSON() : "User score not found"});
+    console.log("User score calculated is active 0: ", userScore0?.toJSON());
+    console.log("User score calculated is active 2: ", userScore2?.toJSON());
+    res.json({ score: userScore ? userScore.toJSON() : userScore0 ? userScore0.toJSON() : userScore2 ? userScore2.toJSON() : "User score not found"});
   }, 1000);
 });
 
@@ -215,7 +220,8 @@ server.get("/score/:examID/:userID", async (req, res) => {
   console.log("Score_1: ", score_1?.toJSON());
   console.log("Score_0: ", score_0?.toJSON());
   console.log("Score_2: ", score_2?.toJSON());
-  res.send({ score: score_1?.toJSON() });
+  
+  res.send({ score: score_1 ? score_1.toJSON() : score_0 ? score_0.toJSON() : score_2 ? score_2.toJSON() : "User score not found"});
 });
 
 server.get("/exams/:examID", async (req, res) => {
