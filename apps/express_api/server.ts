@@ -125,12 +125,16 @@ server.post("/submit-user-answers", async (req, res) => {
   console.log("Submit user answers: ", req.body);
   const examina = client.runtime.resolve("Examina");
   const examID = Poseidon.hash([Field(Buffer.from(req.body.examID).toString("hex"))]);
+  console.log("Exam id buffer", Buffer.from(req.body.examID).toString("hex"))
+  console.log("ExamID: ", examID);
   const userID = Poseidon.hash([Field(Buffer.from(req.body.userID).toString("hex"))]);
+  console.log("User id buffer", Buffer.from(req.body.userID).toString("hex"))
+  console.log("UserID: ", userID);
   let answers: UserAnswersInput = {
     answers: req.body.answers.map((a: any) => {
       return {
-        answerID: new AnswerID(examID, Poseidon.hash([Field(Buffer.from(a.questionID).toString("hex"))]), userID),
-        answer: new UserAnswer(Poseidon.hash([Field(Buffer.from(a.questionID).toString("hex"))]), Field.from(a.answer))
+        answerID: new AnswerID(examID, Poseidon.hash([Field(Buffer.from(a.question).toString("hex"))]), userID),
+        answer: new UserAnswer(Poseidon.hash([Field(Buffer.from(a.question).toString("hex"))]), Field.from(a.selectedOption))
       };
     })
   };
