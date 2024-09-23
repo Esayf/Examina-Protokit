@@ -53,7 +53,7 @@ server.get("/create/mock_exam", async (req, res) => {
     res.send("Exam created");
   } catch (error) {
     console.error(error);
-    res.json("Error creating exam");
+    res.status(500).json("Error creating exam");
   }
 
 });
@@ -61,6 +61,7 @@ server.get("/create/mock_exam", async (req, res) => {
 server.post("/create/exam", async (req, res) => {
   try {
     const examina = client.runtime.resolve("Examina");
+    console.log("Create exam body: ", req.body);
     const examID = Poseidon.hash([Field(Buffer.from(req.body.examID).toString("hex"))]);
     const questions = req.body.questions;
     const questionsAsStruct: Question[] = questions.map((q: any) => {
@@ -89,10 +90,10 @@ server.post("/create/exam", async (req, res) => {
     tx.transaction = tx.transaction?.sign(serverKey);
     await tx.send();
     console.log("Exam created");
-    res.send("Exam created");
+    res.status(200).send("Exam created");
   } catch (error) {
     console.error(error);
-    res.json("Error creating exam");
+    res.status(500).json("Error creating exam");
   }
 });
 
