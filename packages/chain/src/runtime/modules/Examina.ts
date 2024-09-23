@@ -70,19 +70,16 @@ export class UserAnswer extends Struct({
     }
 }
 export class Exam120 extends Struct({
-    questions_count: UInt64,
     creator: PublicKey,
     isActive: UInt64, // 0 = not started, 1 = started, 2 = ended
     questions: Provable.Array(Question, 120),
 }) {
     constructor(
-        questions_count: UInt64,
         creator: PublicKey,
         isActive: UInt64,
         questions: Question[],
     ) {
-        super({ questions_count, creator, isActive, questions});
-        this.questions_count = questions_count;
+        super({ creator, isActive, questions});
         this.creator = creator;
         this.isActive = isActive;
         this.questions = questions;
@@ -145,7 +142,7 @@ export class Examina extends RuntimeModule<ExamConfig> {
 
     @runtimeMethod()
     public async createExam(examID: Field, exam: Exam120): Promise<void> {
-        await this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, UInt64.from(1), exam.questions));
+        await this.exams.set(examID, new Exam120(exam.creator, new UInt64(1), exam.questions));
     }
 
     // Deprecated, will be removed after the backend update

@@ -43,7 +43,7 @@ server.get("/create/mock_exam", async (req, res) => {
         correct_answer: Field.from(i + questionsLength + 1),
       });
     }
-    const exam = new Exam120(UInt64.from(3), serverPubKey, UInt64.from(1), mockQuestions);
+    const exam = new Exam120(serverPubKey, UInt64.from(1), mockQuestions);
     const tx = await client.transaction(serverPubKey, async () => {
       await examina.createExam(Field(Buffer.from("1").toString("hex")), exam);
     });
@@ -76,14 +76,17 @@ server.post("/create/exam", async (req, res) => {
         correct_answer: Field.from(q.correct_answer)
       };
     })
+    console.log("Questions as struct: ", questionsAsStruct);
+    console.log("Questions length: ", questions.length);
     for (let i = 0; i < 120 - questions.length; i++) {
       questionsAsStruct.push({
         questionID: Field.from(i + questions.length + 1),
         questionHash: Field.from(i + questions.length + 1),
-        correct_answer: Field.from(i + questions.length + 1),
+        correct_answer: Field.from(0),
       });
+      console.log("Question empty added number: ", i + questions.length + 1);
     }
-    const exam = new Exam120(UInt64.from(questions.length), serverPubKey, UInt64.from(1), questionsAsStruct);
+    const exam = new Exam120(serverPubKey, UInt64.from(1), questionsAsStruct);
     const tx = await client.transaction(serverPubKey, async () => {
       await examina.createExam(examID, exam);
     });
