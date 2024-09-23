@@ -164,7 +164,7 @@ describe("Examina", () => {
             mockQuestions.push(zeroQuestion);
         }
 
-        const mockExam: Exam120 = new Exam120(UInt64.from(10), alice, UInt64.from(1), mockQuestions);
+        const mockExam: Exam120 = new Exam120(alice, UInt64.from(1), mockQuestions);
 
 
         const tx1 = await appChain.transaction(alice, async () => {
@@ -180,7 +180,6 @@ describe("Examina", () => {
 
         expect(block?.transactions[0].status.toBoolean()).toBe(true);
         expect(exam != undefined).toBe(true);
-        expect(exam?.questions_count.toString()).toBe("10");
         expect(exam?.isActive.toString()).toBe("1");
         console.log("------------------------END OF CREATE EXAM TEST ----------------------")
     }, 150_000);

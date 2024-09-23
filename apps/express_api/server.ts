@@ -68,25 +68,24 @@ server.post("/create/exam", async (req, res) => {
       console.log("Question: ", {
         questionID: Poseidon.hash([Field(Buffer.from(q.questionID).toString("hex"))]),
         questionHash: CircuitString.fromString(q.question).hash(),
-        correct_answer: Field.from(q.correct_answer)
+        correct_answer: Field(Number(q.correct_answer))
       });
       return {
         questionID: Poseidon.hash([Field(Buffer.from(q.questionID).toString("hex"))]),
         questionHash: CircuitString.fromString(q.question).hash(),
-        correct_answer: Field.from(q.correct_answer)
+        correct_answer: Field(Number(q.correct_answer))
       };
     })
     console.log("Questions as struct: ", questionsAsStruct);
     console.log("Questions length: ", questions.length);
     for (let i = 0; i < 120 - questions.length; i++) {
       questionsAsStruct.push({
-        questionID: Field.from(i + questions.length + 1),
-        questionHash: Field.from(i + questions.length + 1),
-        correct_answer: Field.from(0),
+        questionID: Field(Number(0)),
+        questionHash: Field(Number(0)),
+        correct_answer: Field(Number(0)),
       });
-      console.log("Question empty added number: ", i + questions.length + 1);
     }
-    const exam = new Exam120(serverPubKey, UInt64.from(1), questionsAsStruct);
+    const exam = new Exam120(serverPubKey, UInt64.from(Number(1)), questionsAsStruct);
     const tx = await client.transaction(serverPubKey, async () => {
       await examina.createExam(examID, exam);
     });
