@@ -4,12 +4,12 @@ import {
   GraphqlServer,
 } from "@proto-kit/api";
 import {
-  PrivateMempool,
   SequencerModulesRecord,
   TimedBlockTrigger,
   BlockProducerModule,
 } from "@proto-kit/sequencer";
 import { ModulesConfig } from "@proto-kit/common";
+import { PrivateMempoolWithSort } from "./PrivateMempoolWithSort";
 
 export const apiSequencerModules = {
   GraphqlServer,
@@ -29,7 +29,7 @@ export const apiSequencerModulesConfig = {
 
 export const baseSequencerModules = {
   ...apiSequencerModules,
-  Mempool: PrivateMempool,
+  Mempool: PrivateMempoolWithSort,
   BlockProducerModule: BlockProducerModule,
   BlockTrigger: TimedBlockTrigger,
 } satisfies SequencerModulesRecord;

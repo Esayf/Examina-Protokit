@@ -9,9 +9,10 @@
     "prisma:migrate": "turbo run prisma:migrate --env-mode=loose",
     "prisma:generate": "turbo run prisma:generate",
     "start": "turbo run start --env-mode=loose",
-    "docker:build": "docker compose -f docker/docker-compose.yml build",
+    "docker:build": "docker compose -f docker/docker-compose.yml build --no-cache",
     "docker:up": "docker compose -f docker/docker-compose.yml up",
     "docker:down": "docker compose -f docker/docker-compose.yml down",
+    "docker:down:v": "docker compose -f docker/docker-compose.yml down -v",
     "env:development": "dotenv -e ./packages/chain/src/environments/development/.env -- pnpm",
     "env:inmemory": "dotenv -e ./packages/chain/src/environments/inmemory/.env -- pnpm",
     "env:sovereign": "dotenv -e ./packages/chain/src/environments/sovereign/.env -- pnpm"
