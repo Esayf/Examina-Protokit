@@ -161,11 +161,15 @@ server.post("/submit-user-answers", async (req, res) => {
 server.post("/publish-correct-answers", async (req, res) => {
   const examina = client.runtime.resolve("Examina");
   const examID = Poseidon.hash([Field(Buffer.from(req.body.examID).toString("hex"))]);
+  const exam = await client.query.runtime.Examina.exams.get(examID);
+  if(!exam) {
+    res.status(200).send("Exam not found so skip this step");
+  }
   let questions: Questions;
   questions = {
     array: req.body.questions.map((q: any) => {
       return {
-        questionID: Poseidon.hash([Field(Buffer.from(q.questionID).toString("hex"))]),
+        questionID: Poseidon.hash([Field(Buffer.from(q.questionID.toString()).toString("hex"))]),
         questionHash: CircuitString.fromString(q.question).hash(),
         correct_answer: Field.from(q.correct_answer)
       };
