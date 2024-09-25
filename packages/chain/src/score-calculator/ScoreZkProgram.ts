@@ -43,7 +43,7 @@ export const CalculateScore = ZkProgram({
         baseCase: {
             privateInputs: [Field, Field, Field],
 
-            method(secureHash: Field, answers: Field, userAnswers: Field, index: Field) {
+            async method(secureHash: Field, answers: Field, userAnswers: Field, index: Field) {
                 index.mul(INDEX_MULTIPLIER).assertEquals(1);
                 secureHash.assertEquals(Poseidon.hash([answers, userAnswers, index]));
 
@@ -54,7 +54,7 @@ export const CalculateScore = ZkProgram({
         calculate: {
             privateInputs: [SelfProof, Field, Field, Field],
 
-            method (
+            async method (
                 secureHash: Field,
                 earlierProof: SelfProof<Field, PublicOutputs>,
                 answers: Field,

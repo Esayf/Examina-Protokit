@@ -1,4 +1,4 @@
-import { Field, Bool, Struct, Provable } from 'o1js'
+import { Field, Bool, Struct, Provable, Gadgets } from 'o1js'
 
 /**
  * A 240 bit unsigned integer with values ranging from 0 to 1,1579208923731619542357098500869e+77.
@@ -101,12 +101,10 @@ export class UInt240 extends Struct ({
       Field,
       () => new Field(x.toBigInt() / y_.toBigInt())
     );
-
-    q.rangeCheckHelper(UInt240.NUM_BITS).assertEquals(q);
-
+    Gadgets.rangeCheckN(UInt240.NUM_BITS,q);
     // TODO: Could be a bit more efficient
     let r = x.sub(q.mul(y_)).seal();
-    r.rangeCheckHelper(UInt240.NUM_BITS).assertEquals(r);
+    Gadgets.rangeCheckN(UInt240.NUM_BITS,r);
 
     r.assertLessThan(y_);
 
@@ -142,7 +140,7 @@ export class UInt240 extends Struct ({
    */
   mul(y: UInt240 | number) {
     let z = this.value.mul(UInt240.from(y).value);
-    z.rangeCheckHelper(UInt240.NUM_BITS).assertEquals(z);
+    Gadgets.rangeCheckN(UInt240.NUM_BITS,z);
     return new UInt240(z);
   }
 
@@ -151,7 +149,7 @@ export class UInt240 extends Struct ({
    */
   add(y: UInt240 | number) {
     let z = this.value.add(UInt240.from(y).value);
-    z.rangeCheckHelper(UInt240.NUM_BITS).assertEquals(z);
+    Gadgets.rangeCheckN(UInt240.NUM_BITS,z);
     return new UInt240(z);
   }
 
@@ -160,7 +158,7 @@ export class UInt240 extends Struct ({
    */
   sub(y: UInt240 | number) {
     let z = this.value.sub(UInt240.from(y).value);
-    z.rangeCheckHelper(UInt240.NUM_BITS).assertEquals(z);
+    Gadgets.rangeCheckN(UInt240.NUM_BITS,z);
     return new UInt240(z);
   }
 }
