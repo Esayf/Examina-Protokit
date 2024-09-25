@@ -26,18 +26,18 @@
     "dependencies": {
       "graphql": "^16.8.1",
       "chain": "workspace:*",
-      "express": "^4.19.2"
+      "express": "4.19.2"
     },
     "peerDependencies": {
       "@proto-kit/protocol": "*",
       "@proto-kit/library": "*",
-      "o1js": "0.13.1",
+      "o1js": "^1.6.0",
       "tsyringe": "^4.7.0"
     },
     "devDependencies": {
-      "@types/express": "^4.17.21",
-      "@types/node": "^20",
-      "npm-watch": "^0.11.0",
-      "typescript": "^5"
+      "@types/express": "4.17.21",
+      "@types/node": "18",
+      "npm-watch": "0.11.0",
+      "typescript": "5"
     }
   }

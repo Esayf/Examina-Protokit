@@ -11,7 +11,8 @@ import {
     PublicKey,
     Struct,
     UInt64,
-    Poseidon
+    Poseidon,
+    Bool
 } from "o1js";
 
 interface ExamConfig { 
@@ -69,36 +70,32 @@ export class UserAnswer extends Struct({
     }
 }
 export class Exam120 extends Struct({
-    questions_count: UInt64,
     creator: PublicKey,
     isActive: UInt64, // 0 = not started, 1 = started, 2 = ended
     questions: Provable.Array(Question, 120),
 }) {
     constructor(
-        questions_count: UInt64,
         creator: PublicKey,
         isActive: UInt64,
         questions: Question[],
     ) {
-        super({ questions_count, creator, isActive, questions});
-        this.questions_count = questions_count;
+        super({ creator, isActive, questions});
         this.creator = creator;
         this.isActive = isActive;
-        for(let i = Number(questions_count.toBigInt()); i < 120; i++) {
-            questions[i] = new Question(Field.from(0), Field.from(0), Field.from(0));
-        }
         this.questions = questions;
     }
 }
 
 export class UserExam extends Struct({
     examID: Field,
-    userID: Field
+    userID: Field,
+    isCompleted: UInt64
 }) {
-    constructor(examID: Field, userID: Field) {
-        super({ examID, userID });
+    constructor(examID: Field, userID: Field, isCompleted: UInt64) {
+        super({ examID, userID, isCompleted });
         this.examID = examID;
         this.userID = userID;
+        this.isCompleted = isCompleted;
     }
 }
 export class AnswerID extends Struct({
@@ -117,40 +114,82 @@ export class AnswerID extends Struct({
         return Poseidon.hash([this.examID, this.questionID, this.userID]);
     }
 }
+
+export class UserAnswerInput extends Struct({
+    answerID: AnswerID,
+    answer: UserAnswer,
+}) {
+    constructor(answerID: AnswerID, answer: UserAnswer) {
+        super({ answerID, answer });
+        this.answer = answer;
+        this.answerID = answerID;
+    }
+}
+
+export class UserAnswersInput extends Struct({
+    answers: Provable.Array(UserAnswerInput, 120),
+}) {
+    constructor(answers: UserAnswerInput[]) {
+        super({ answers });
+        this.answers = answers;
+    }
+}
 @runtimeModule()
 export class Examina extends RuntimeModule<ExamConfig> {
     @state() public exams = StateMap.from<Field, Exam120>(Field, Exam120);
     @state() public answers = StateMap.from<AnswerID, UserAnswer>(AnswerID, UserAnswer);
     @state() public userScores = StateMap.from<UserExam, Field>(UserExam, Field);
+
     @runtimeMethod()
-    public createExam(examID: Field, exam: Exam120): void {
-        this.exams.set(examID, new Exam120(exam.questions_count, exam.creator, UInt64.from(1), exam.questions));
+    public async createExam(examID: Field, exam: Exam120): Promise<void> {
+        await this.exams.set(examID, new Exam120(exam.creator, new UInt64(1), exam.questions));
+    }
+
+    // Deprecated, will be removed after the backend update
+    @runtimeMethod()
+    public async submitUserAnswer(answerID: AnswerID, answer: UserAnswer): Promise<void> {
+        await this.answers.set(answerID, answer);
+    }
+
+    public async submitUserAnswerInternal(answerID: AnswerID, answer: UserAnswer): Promise<void> {
+
+        const exam = (await this.exams.get(answerID.examID));
+        assert(exam.isSome, "Exam not found");
+        assert(exam.value.isActive.equals(UInt64.from(1)), "Exam is not active");
+        await this.answers.set(answerID, answer);
     }
 
     @runtimeMethod()
-    public submitUserAnswer(answerID: AnswerID, answer: UserAnswer): void {
-        assert(this.exams.get(answerID.examID).value.isActive.equals(UInt64.from(1)), "Exam is not active");
-        this.answers.set(answerID, answer);
+    public async submitUserAnswers(answersInput: UserAnswersInput): Promise<void> {
+        for(const answer of answersInput.answers) {
+            await this.submitUserAnswerInternal(answer.answerID, answer.answer);
+        }
     }
-
     @runtimeMethod()
-    public publishExamCorrectAnswers(examID: Field, questions: Questions): void {
-        const exam = this.exams.get(examID).value;
+    public async publishExamCorrectAnswers(examID: Field, questions: Questions): Promise<void> {
+        assert((await this.exams.get(examID)).isSome.equals(Bool(true)), "Exam is not available");
+        assert((await this.exams.get(examID)).value.isActive.equals(UInt64.from(1)), "Exam is not active");
+        let exam = (await this.exams.get(examID)).value;
         exam.questions = questions.array;
         exam.isActive = UInt64.from(2);
-        this.exams.set(examID, exam);
+        await this.exams.set(examID, exam);
     }
 
-    public getUserAnswers(examID: Field, userID: Field): [Field[], Field[]] {
-        const exam = this.exams.get(examID).value;
+    public async getUserAnswers(examID: Field, userID: Field): Promise<[Field[], Field[]]> {
+        const exam = (await this.exams.get(examID)).value;
         let userAnswers: Field[] = [];
         let correctAnswers: Field[] = [];
-        for (let i = 0; i < exam.questions_count.toBigInt(); i++) {
-            const answerID = new AnswerID(examID, exam.questions[i].questionID, userID);
-            const answer = this.answers.get(answerID).value;
+            for (const question of exam.questions) {
+            const answerID = new AnswerID(examID, question.questionID, userID);
+            const answer = Provable.if(
+                (await this.answers.get(answerID)).isSome, 
+                UserAnswer, (await this.answers.get(answerID)).value, 
+                new UserAnswer(Field(0), Field(0))
+            );
             userAnswers.push(answer.answer);
-            correctAnswers.push(exam.questions[i].correct_answer);
-        }
+            correctAnswers.push(question.correct_answer);
+        };
+
         return [correctAnswers, userAnswers];
     }
 
@@ -158,7 +197,7 @@ export class Examina extends RuntimeModule<ExamConfig> {
         let scoreController = new ScoreController(Field(0), Field(0));
         for (let i = 0; i < correctAnswers.length; i++) {
             const newScore = Provable.if(
-            correctAnswers[i].equals(userAnswers[i]).and(correctAnswers[i].isConstant()), 
+            correctAnswers[i].equals(userAnswers[i]).and(correctAnswers[i].equals(Field(0)).not()), 
             ScoreController, 
             new ScoreController(scoreController.corrects.add(Field(1)), scoreController.incorrects) , 
             new ScoreController (scoreController.corrects, scoreController.incorrects.add(Field(1))));
@@ -168,10 +207,9 @@ export class Examina extends RuntimeModule<ExamConfig> {
     }
 
     @runtimeMethod()
-    public checkUserScore(userID: Field, examID: Field): Field {
-        const [correctAnswers, userAnswers] = this.getUserAnswers(examID, userID);
+    public async checkUserScore(userID: Field, examID: Field): Promise<void> {
+        const [correctAnswers, userAnswers] = await this.getUserAnswers(examID, userID);
         const score = this.calculateScore(correctAnswers, userAnswers);
-        this.userScores.set(new UserExam(examID, userID), score);
-        return score;
+        await this.userScores.set(new UserExam(examID, userID, UInt64.from(1)), score);
     }
 }

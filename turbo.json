@@ -1,7 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["**/.env.*local"],
-  "pipeline": {
+  "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist"]
@@ -15,9 +15,12 @@
     "start": {
       "cache": false
     },
-    "start-server": {
-      "cache": false,
-      "persistent": true
-    }
+    "prisma:migrate": {
+      "cache": false
+    },
+    "prisma:generate": {
+      "cache": false
+    },
+    "start:headless": {}
   }
 }
