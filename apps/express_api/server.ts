@@ -1,12 +1,12 @@
 import express, { Express, Request, Response } from "express";
 import { client } from "chain";
 import { AnswerID, Exam120, Question, Questions, UserAnswer, UserAnswerInput, UserAnswersInput, UserExam } from "chain/dist/runtime/modules/Examina";
-import { CalculateScore } from "chain/dist/score-calculator/ScoreZkProgram";
+//import { CalculateScore } from "chain/dist/score-calculator/ScoreZkProgram";
 import { CircuitString, Field, Poseidon, PrivateKey, UInt64, ZkProgram } from "o1js";
 const server = express();
 server.use(express.json());
-const verificationKey = await CalculateScore.compile();
-let MyProof = ZkProgram.Proof(CalculateScore);
+//const verificationKey = await CalculateScore.compile();
+//let MyProof = ZkProgram.Proof(CalculateScore);
 
 const serverKey = PrivateKey.random();
 const serverPubKey = serverKey.toPublicKey();
