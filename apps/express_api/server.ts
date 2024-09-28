@@ -3,6 +3,7 @@ import { client } from "chain";
 import { AnswerID, Exam120, Question, Questions, UserAnswer, UserAnswerInput, UserAnswersInput, UserExam } from "chain/dist/runtime/modules/Examina";
 //import { CalculateScore } from "chain/dist/score-calculator/ScoreZkProgram";
 import { CircuitString, Field, Poseidon, PrivateKey, UInt64, ZkProgram } from "o1js";
+
 const server = express();
 server.use(express.json());
 //const verificationKey = await CalculateScore.compile();
@@ -102,31 +103,6 @@ server.post("/create/exam", async (req, res) => {
   }
 });
 
-server.post("/submit-user-answer", async (req, res) => {
-  console.log("Submit user answer: ", req.body);
-  const examina = client.runtime.resolve("Examina");
-  const examID = Poseidon.hash([Field(Buffer.from(req.body.examID).toString("hex"))]);
-  const questionID = Poseidon.hash([Field(Buffer.from(req.body.questionID).toString("hex"))]);
-  const userID = Poseidon.hash([Field(Buffer.from(req.body.userID).toString("hex"))]);
-  const answer = Field.from(req.body.userAnswer);
-  try {
-    const tx = await client.transaction(serverPubKey, async () => {
-      await examina.submitUserAnswer(new AnswerID(examID, questionID, userID), new UserAnswer(questionID, answer));
-    });
-    tx.transaction = tx.transaction?.sign(serverKey);
-    tx.send().then(() => {
-      console.log("User answer submitted in protokit: ", answer?.toJSON());
-      res.send("User answer submitted");
-    }).catch((error) => {
-      console.log("Error submitting user answer in protokit: ", error);
-      res.status(500).send("Error submitting user answer");
-    });
-  } catch (error) {
-    console.log("An error here from submit answer protokit:", error);
-    res.status(500).send("Error submitting user answer");
-  }
-});
-
 server.post("/submit-user-answers", async (req, res) => {
   console.log("Submit user answers: ", req.body);
   const examina = client.runtime.resolve("Examina");
@@ -153,7 +129,7 @@ server.post("/submit-user-answers", async (req, res) => {
   tx.transaction = tx.transaction?.sign(serverKey);
   tx.send().then(() => {
     console.log("User answers submitted");
-    res.send("User answers submitted");
+    res.status(200).json("User answers submitted");
   }).catch((error) => {
     console.log("Error submitting user answers: ", error);
     res.status(500).send("Error submitting user answers");
@@ -192,6 +168,7 @@ server.post("/publish-correct-answers", async (req, res) => {
   tx_1.transaction = tx_1.transaction?.sign(serverKey);
   await tx_1.send();
   console.log("Correct answers published");
+  res.status(200).json("Correct answers published");
 });
 
 server.post("/check-score", async (req, res) => {
@@ -203,7 +180,7 @@ server.post("/check-score", async (req, res) => {
   });
   tx.transaction = tx.transaction?.sign(serverKey);
   await tx.send();
-  setTimeout(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 5000));
     const userScore = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(1)));
     const userScore0 = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(0)));
     const userScore2 = await client.query.runtime.Examina.userScores.get(new UserExam(examID, userID, UInt64.from(2)));
@@ -211,8 +188,7 @@ server.post("/check-score", async (req, res) => {
     console.log("User score calculated: ", userScore?.toJSON());
     console.log("User score calculated is active 0: ", userScore0?.toJSON());
     console.log("User score calculated is active 2: ", userScore2?.toJSON());
-    res.json({ score: userScore ? userScore.toJSON() : userScore0 ? userScore0.toJSON() : userScore2 ? userScore2.toJSON() : "User score not found"});
-  }, 1000);
+    return res.json({ score: userScore ? userScore.toJSON() : userScore0 ? userScore0.toJSON() : userScore2 ? userScore2.toJSON() : "User score not found"});
 });
 
 server.get("/score/:examID/:userID", async (req, res) => {
@@ -225,10 +201,9 @@ server.get("/score/:examID/:userID", async (req, res) => {
 
 
   console.log("Score_1: ", score_1?.toJSON());
-  console.log("Score_0: ", score_0?.toJSON());
   console.log("Score_2: ", score_2?.toJSON());
   
-  res.send({ score: score_1 ? score_1.toJSON() : score_0 ? score_0.toJSON() : score_2 ? score_2.toJSON() : "User score not found"});
+  res.status(200).send({ score: score_1 ? score_1.toJSON() : score_0 ? score_0.toJSON() : score_2 ? score_2.toJSON() : "User score not found"});
 });
 
 server.get("/exams/:examID", async (req, res) => {

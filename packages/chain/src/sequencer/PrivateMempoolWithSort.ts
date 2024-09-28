@@ -53,7 +53,10 @@ export class PrivateMempoolWithSort extends SequencerModule implements Mempool {
 
     public async getTxs(): Promise<PendingTransaction[]> {
         const pendingTransactions = await this.transactionStorage.getPendingUserTransactions();
-        return pendingTransactions.sort((a, b) => Number(a.nonce.sub(b.nonce))).reverse();
+        const first = pendingTransactions.sort((a, b) => Number(a.nonce.sub(b.nonce))).reverse().at(0);
+        log.info(`Returning transactions from mempool with nonces ${pendingTransactions.map((tx) => tx.nonce.toString())}`);
+        log.info(`Returning first transaction ${first} from mempool with nonce ${first?.nonce.toString()}`);
+        return first !== undefined ? [first] : [];    
     }
 
     public async start(): Promise<void> {

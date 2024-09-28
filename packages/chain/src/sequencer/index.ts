@@ -10,6 +10,7 @@ import {
   PrivateMempool
 } from "@proto-kit/sequencer";
 import { ModulesConfig } from "@proto-kit/common";
+import { PrivateMempoolWithSort } from "./PrivateMempoolWithSort";
 //import { PrivateMempoolWithSort } from "./PrivateMempoolWithSort";
 
 export const apiSequencerModules = {
@@ -30,7 +31,7 @@ export const apiSequencerModulesConfig = {
 
 export const baseSequencerModules = {
   ...apiSequencerModules,
-  Mempool: PrivateMempool,
+  Mempool: PrivateMempoolWithSort,
   BlockProducerModule: BlockProducerModule,
   BlockTrigger: TimedBlockTrigger,
 } satisfies SequencerModulesRecord;
